@@ -1,9 +1,10 @@
 import { createEffect, For, Match, on, onCleanup, onMount, Show, Switch, type Accessor, type JSX } from "solid-js"
 import { animate, type AnimationPlaybackControls } from "motion"
-import { useI18n } from "@opencode-ai/ui/context/i18n"
 import { createStore } from "solid-js/store"
 import { Collapsible } from "@opencode-ai/ui/collapsible"
+import { Icon } from "@opencode-ai/ui/icon"
 import type { IconProps } from "@opencode-ai/ui/icon"
+import { Spinner } from "@opencode-ai/ui/spinner"
 import { TextShimmer } from "@opencode-ai/ui/text-shimmer"
 
 export type TriggerTitle = {
@@ -193,6 +194,11 @@ export function BasicTool(props: BasicToolProps) {
               {(title) => (
                 <div data-slot="basic-tool-tool-info-structured">
                   <div data-slot="basic-tool-tool-info-main">
+                    <span data-slot="basic-tool-tool-indicator">
+                      <Show when={pending()} fallback={<Icon name={props.icon} size="small" />}>
+                        <Spinner />
+                      </Show>
+                    </span>
                     <span
                       data-slot="basic-tool-tool-title"
                       classList={{
@@ -322,14 +328,12 @@ export function GenericTool(props: {
   hideDetails?: boolean
   input?: Record<string, unknown>
 }) {
-  const i18n = useI18n()
-
   return (
     <BasicTool
       icon="mcp"
       status={props.status}
       trigger={{
-        title: i18n.t("ui.basicTool.called", { tool: props.tool }),
+        title: props.tool,
         subtitle: label(props.input),
         args: args(props.input),
       }}
