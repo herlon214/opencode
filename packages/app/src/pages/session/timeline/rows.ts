@@ -23,6 +23,7 @@ export type TimelineRowMap = {
     userMessageID: string
     group: PartGroup
     previousAssistantPart: boolean
+    followsInProgress: boolean
   }
   InProgressGroup: {
     userMessageID: string
@@ -55,6 +56,7 @@ export namespace TimelineRow {
     userMessageID: string
     group: PartGroup
     previousAssistantPart: boolean
+    followsInProgress: boolean
   }> {}
   export class InProgressGroup extends Data.TaggedClass("InProgressGroup")<{
     userMessageID: string
@@ -231,6 +233,7 @@ export namespace Timeline {
             userMessageID: userMessage.id,
             group: finalItem.group,
             previousAssistantPart: assistantGroupIndex > 0,
+            followsInProgress: emittedInProgressGroup,
           }),
         )
         assistantGroupIndex += 1
@@ -247,6 +250,7 @@ export namespace Timeline {
             userMessageID: userMessage.id,
             group: item.group,
             previousAssistantPart: assistantGroupIndex > 0,
+            followsInProgress: false,
           }),
         )
         assistantGroupIndex += 1

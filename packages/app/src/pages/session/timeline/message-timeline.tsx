@@ -1123,7 +1123,7 @@ export function MessageTimeline(props: {
         open={open()}
         onOpenChange={setOpen}
         variant="ghost"
-        class="in-progress-collapsible"
+        class="in-progress-collapsible pb-2 border-b border-border-weak-base"
         data-timeline-part-ids={props
           .row()
           .groups.map((item) => item.group.key)
