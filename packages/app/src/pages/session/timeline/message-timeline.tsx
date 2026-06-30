@@ -1081,7 +1081,6 @@ export function MessageTimeline(props: {
           "md:max-w-200 2xl:max-w-[1000px]": props.centered,
           "md:mx-auto": props.centered,
           "pt-3": previousAssistantPart() && !followsInProgress(),
-          "pt-1": followsInProgress(),
         }}
       >
         <div data-component="session-turn" class="min-w-0 w-full relative" style={{ height: "auto" }}>
@@ -1123,7 +1122,7 @@ export function MessageTimeline(props: {
         open={open()}
         onOpenChange={setOpen}
         variant="ghost"
-        class="in-progress-collapsible pb-2 border-b border-border-weak-base"
+        class="in-progress-collapsible border-b border-border-weak-base"
         data-timeline-part-ids={props
           .row()
           .groups.map((item) => item.group.key)
