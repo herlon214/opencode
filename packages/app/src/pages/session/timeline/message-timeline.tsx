@@ -1007,6 +1007,7 @@ export function MessageTimeline(props: {
                     turnDurationMs={turnDurationMs(userMessageID())}
                     turnOutputTokens={turnOutputTokens(userMessageID())}
                     useV2Actions={settings.general.newLayoutDesigns()}
+                    showReasoningSummaries={settings.general.showReasoningSummaries()}
                     defaultOpen={defaultOpenForPart(part())}
                     toolOpen={toolOpen[part().id] ?? defaultOpenForPart(part())}
                     onToolOpenChange={(open) => setToolOpen(part().id, open)}
@@ -1065,6 +1066,10 @@ export function MessageTimeline(props: {
       const row = input.row()
       return row._tag === "AssistantPart" && row.previousAssistantPart
     }
+    const followsInProgress = () => {
+      const row = input.row()
+      return row._tag === "AssistantPart" && row.followsInProgress
+    }
 
     return (
       <div
@@ -1075,7 +1080,8 @@ export function MessageTimeline(props: {
           "min-w-0 w-full max-w-full": true,
           "md:max-w-200 2xl:max-w-[1000px]": props.centered,
           "md:mx-auto": props.centered,
-          "pt-3": previousAssistantPart(),
+          "pt-3": previousAssistantPart() && !followsInProgress(),
+          "pt-1": followsInProgress(),
         }}
       >
         <div data-component="session-turn" class="min-w-0 w-full relative" style={{ height: "auto" }}>

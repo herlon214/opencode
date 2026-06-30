@@ -189,6 +189,7 @@ export interface MessagePartProps {
   turnDurationMs?: number
   turnOutputTokens?: number
   useV2Actions?: boolean
+  showReasoningSummaries?: boolean
 }
 
 function MessageActionButton(
@@ -1343,6 +1344,7 @@ export function Part(props: MessagePartProps) {
         turnDurationMs={props.turnDurationMs}
         turnOutputTokens={props.turnOutputTokens}
         useV2Actions={props.useV2Actions}
+        showReasoningSummaries={props.showReasoningSummaries}
       />
     </Show>
   )
@@ -1670,6 +1672,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
     const duration = reasoningDuration(part())
     return duration === undefined ? undefined : formatDuration(duration)
   })
+  const showBody = createMemo(() => props.showReasoningSummaries ?? true)
 
   return (
     <Show when={text()}>
@@ -1690,8 +1693,10 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
             </Show>
           </span>
         </div>
-        <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-          <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+        <Show when={showBody()}>
+          <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
+            <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+          </Show>
         </Show>
       </div>
     </Show>
