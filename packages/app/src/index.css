@@ -97,6 +97,224 @@
     width: 100%;
   }
 
+  [data-component="quote-reply"] {
+    position: fixed;
+    z-index: 90;
+  }
+
+  [data-component="quote-reply"][data-placement="above"] {
+    transform: translate(-50%, calc(-100% - 8px));
+    transform-origin: center bottom;
+  }
+
+  [data-component="quote-reply"][data-placement="below"] {
+    transform: translate(-50%, 8px);
+    transform-origin: center top;
+  }
+
+  [data-component="quote-reply"][data-variant="trigger"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-weak-base);
+    background: var(--background-base);
+    color: var(--text-strong);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: var(--v2-elevation-raised);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  [data-component="quote-reply"][data-variant="trigger"]:hover {
+    background: var(--background-stronger);
+  }
+
+  [data-component="quote-reply"][data-variant="trigger"] [data-component="icon"] {
+    color: var(--text-base);
+  }
+
+  [data-component="quote-reply"][data-variant="editor"] {
+    width: min(360px, calc(100vw - 24px));
+    color: var(--v2-text-text-base);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-shell"] {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--v2-border-border-base);
+    background: var(--v2-background-bg-layer-01);
+    box-shadow: var(--v2-elevation-raised);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-heading"] {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 530;
+    line-height: 1;
+    letter-spacing: -0.04px;
+    color: var(--v2-text-text-base);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-heading"] [data-component="icon"] {
+    color: var(--v2-icon-icon-muted);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-excerpt"] {
+    display: -webkit-box;
+    max-height: 72px;
+    padding: 8px 10px;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    border-radius: 6px;
+    background: var(--v2-background-bg-base);
+    color: var(--v2-text-text-muted);
+    font-size: 12px;
+    font-weight: 440;
+    line-height: 1.4;
+    letter-spacing: -0.02px;
+    white-space: pre-wrap;
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-textarea"] {
+    display: block;
+    width: 100%;
+    min-height: 80px;
+    padding: 8px;
+    margin: 0;
+    resize: vertical;
+    border: 1px solid var(--v2-border-border-base);
+    border-radius: 6px;
+    background:
+      linear-gradient(180deg, var(--v2-alpha-light-2) 0%, var(--v2-alpha-light-0) 100%), var(--v2-background-bg-base);
+    color: var(--v2-text-text-base);
+    font-size: 13px;
+    font-weight: 440;
+    line-height: 1.35;
+    letter-spacing: -0.04px;
+    outline: none;
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-textarea"]::placeholder {
+    color: var(--v2-text-text-faint);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-textarea"]:focus {
+    border-color: var(--v2-border-border-focus);
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-footer"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--v2-text-text-faint);
+    font-size: 11px;
+    font-weight: 530;
+    line-height: 1;
+    letter-spacing: 0.05px;
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-footer"] > span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  [data-component="quote-reply"] [data-slot="quote-reply-actions"] {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  [data-component="prompt-quote-replies"] {
+    position: relative;
+    padding-bottom: 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--v2-border-border-base) 48%, transparent);
+  }
+
+  [data-component="prompt-quote-replies"]::before,
+  [data-component="prompt-quote-replies"]::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    left: 12px;
+    z-index: 1;
+    height: 18px;
+    pointer-events: none;
+  }
+
+  [data-component="prompt-quote-replies"]::before {
+    top: 12px;
+    background: linear-gradient(to bottom, var(--v2-background-bg-base), transparent);
+  }
+
+  [data-component="prompt-quote-replies"]::after {
+    bottom: 10px;
+    background: linear-gradient(to top, var(--v2-background-bg-base), transparent);
+  }
+
+  [data-component="prompt-quote-replies"] [data-slot="prompt-quote-replies-scroll"] {
+    max-height: min(220px, 32vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  [data-component="prompt-quote-reply"] {
+    background: color-mix(in srgb, var(--v2-background-bg-subtle) 72%, transparent);
+    color: var(--v2-text-text-base);
+  }
+
+  [data-component="prompt-quote-reply"] + [data-component="prompt-quote-reply"] {
+    border-top: 1px solid color-mix(in srgb, var(--v2-border-border-base) 42%, transparent);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  [data-component="prompt-quote-reply"] [data-component="icon"] {
+    color: var(--v2-icon-icon-muted);
+  }
+
+  [data-component="prompt-quote-reply"] [data-slot="quote-reply-card-title"] {
+    margin-bottom: 3px;
+    color: var(--v2-text-text-muted);
+    font-size: 11px;
+    font-weight: 560;
+    line-height: 1.2;
+  }
+
+  [data-component="prompt-quote-reply"] [data-slot="quote-reply-card-quote"] {
+    display: -webkit-box;
+    margin-bottom: 5px;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--v2-text-text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+  }
+
+  [data-component="prompt-quote-reply"] [data-slot="quote-reply-card-reply"] {
+    color: var(--v2-text-text-base);
+    font-size: 13px;
+    font-weight: 440;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+
   @container getting-started (min-width: 17rem) {
     [data-component="getting-started-actions"] {
       flex-direction: row;

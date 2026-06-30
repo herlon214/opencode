@@ -3,6 +3,7 @@ import { useSpring } from "@opencode-ai/ui/motion-spring"
 import { type Accessor, createEffect, createMemo, createResource, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { PromptInputState } from "@/components/prompt-input"
+import { formatQuoteReplyPart } from "@/components/prompt-input/quote-replies"
 import { useSync } from "@/context/sync"
 import { getSessionHandoff, setSessionHandoff } from "@/pages/session/handoff"
 import type { SessionComposerController } from "./session-composer-state"
@@ -85,6 +86,7 @@ export function createSessionComposerRegionController(input: {
           if (part.type === "file") return `[file:${part.path}]`
           if (part.type === "agent") return `@${part.name}`
           if (part.type === "image") return `[image:${part.filename}]`
+          if (part.type === "quote-reply") return formatQuoteReplyPart(part)
           return part.content
         })
         .join("")

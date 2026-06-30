@@ -60,6 +60,8 @@ import {
   shouldShowFileTree,
 } from "@/pages/session/helpers"
 import { MessageTimeline } from "@/pages/session/timeline/message-timeline"
+import { QuoteReply } from "@/components/quote-reply"
+import { formatQuoteReplyPart } from "@/components/prompt-input/quote-replies"
 import { createTimelineModel } from "@/pages/session/timeline/model"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
@@ -1264,7 +1266,11 @@ export default function Page() {
 
   const line = (id: string) => {
     const text = draft(id)
-      .map((part) => (part.type === "image" ? `[image:${part.filename}]` : part.content))
+      .map((part) => {
+        if (part.type === "image") return `[image:${part.filename}]`
+        if (part.type === "quote-reply") return formatQuoteReplyPart(part)
+        return part.content
+      })
       .join("")
       .replace(/\s+/g, " ")
       .trim()
@@ -1351,6 +1357,7 @@ export default function Page() {
         if (part.type === "image") return `[image:${part.filename}]`
         if (part.type === "file") return `[file:${part.path}]`
         if (part.type === "agent") return `@${part.name}`
+        if (part.type === "quote-reply") return formatQuoteReplyPart(part)
         return part.content
       })
       .join("")
@@ -1748,42 +1755,45 @@ export default function Page() {
                 <Match when={params.id}>
                   <Show when={messagesReady() ? params.id : undefined} keyed>
                     {(_id) => (
-                      <MessageTimeline
-                        actions={actions}
-                        scroll={ui.scroll}
-                        onResumeScroll={resumeScroll}
-                        setScrollRef={setScrollRef}
-                        onScheduleScrollState={scheduleScrollState}
-                        onAutoScrollHandleScroll={autoScroll.handleScroll}
-                        onMarkScrollGesture={markScrollGesture}
-                        hasScrollGesture={hasScrollGesture}
-                        onUserScroll={markUserScroll}
-                        onHistoryScroll={onHistoryScroll}
-                        onAutoScrollInteraction={autoScroll.handleInteraction}
-                        shouldAnchorBottom={() =>
-                          !location.hash && !store.messageId && !ui.pendingMessage && !autoScroll.userScrolled()
-                        }
-                        centered={centered()}
-                        setContentRef={(el) => {
-                          content = el
-                          autoScroll.contentRef(el)
+                      <>
+                        <MessageTimeline
+                          actions={actions}
+                          scroll={ui.scroll}
+                          onResumeScroll={resumeScroll}
+                          setScrollRef={setScrollRef}
+                          onScheduleScrollState={scheduleScrollState}
+                          onAutoScrollHandleScroll={autoScroll.handleScroll}
+                          onMarkScrollGesture={markScrollGesture}
+                          hasScrollGesture={hasScrollGesture}
+                          onUserScroll={markUserScroll}
+                          onHistoryScroll={onHistoryScroll}
+                          onAutoScrollInteraction={autoScroll.handleInteraction}
+                          shouldAnchorBottom={() =>
+                            !location.hash && !store.messageId && !ui.pendingMessage && !autoScroll.userScrolled()
+                          }
+                          centered={centered()}
+                          setContentRef={(el) => {
+                            content = el
+                            autoScroll.contentRef(el)
 
-                          const root = scroller
-                          if (root) scheduleScrollState(root)
-                        }}
-                        userMessages={visibleUserMessages()}
-                        setHistoryAnchor={(handlers) => {
-                          captureHistoryAnchor = handlers.capture
-                          restoreHistoryAnchor = handlers.restore
-                        }}
-                        anchor={anchor}
-                        setRevealMessage={(fn) => {
-                          revealMessage = fn
-                        }}
-                        setScrollToEnd={(fn) => {
-                          scrollToEnd = fn
-                        }}
-                      />
+                            const root = scroller
+                            if (root) scheduleScrollState(root)
+                          }}
+                          userMessages={visibleUserMessages()}
+                          setHistoryAnchor={(handlers) => {
+                            captureHistoryAnchor = handlers.capture
+                            restoreHistoryAnchor = handlers.restore
+                          }}
+                          anchor={anchor}
+                          setRevealMessage={(fn) => {
+                            revealMessage = fn
+                          }}
+                          setScrollToEnd={(fn) => {
+                            scrollToEnd = fn
+                          }}
+                        />
+                        <QuoteReply container={() => scroller} />
+                      </>
                     )}
                   </Show>
                 </Match>

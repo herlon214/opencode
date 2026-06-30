@@ -36,6 +36,7 @@ export function clonePromptParts(prompt: Prompt): Prompt {
     if (part.type === "text") return { ...part }
     if (part.type === "image") return { ...part }
     if (part.type === "agent") return { ...part }
+    if (part.type === "quote-reply") return { ...part }
     return {
       ...part,
       selection: part.selection ? { ...part.selection } : undefined,
@@ -87,8 +88,9 @@ export function prependHistoryEntry(
     .join("")
     .trim()
   const hasImages = prompt.some((part) => part.type === "image")
+  const hasQuoteReplies = prompt.some((part) => part.type === "quote-reply")
   const hasComments = comments.some((comment) => !!comment.comment.trim())
-  if (!text && !hasImages && !hasComments) return entries
+  if (!text && !hasImages && !hasQuoteReplies && !hasComments) return entries
 
   const entry = {
     prompt: clonePromptParts(prompt),

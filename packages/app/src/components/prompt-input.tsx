@@ -4,6 +4,7 @@ import {
   createEffect,
   on,
   Component,
+  For,
   Show,
   onCleanup,
   createMemo,
@@ -25,6 +26,7 @@ import {
   ImageAttachmentPart,
   AgentPart,
   FileAttachmentPart,
+  QuoteReplyPart,
 } from "@/context/prompt"
 import { useLayout } from "@/context/layout"
 import { useSDK } from "@/context/sdk"
@@ -66,6 +68,7 @@ import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
 import { createPromptInputTransientState } from "./prompt-input/transient-state"
+import { promptText } from "./prompt-input/quote-replies"
 import { showToast } from "@/utils/toast"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
 import type { ReferenceInfo } from "@opencode-ai/sdk/v2/client"
@@ -338,6 +341,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const imageAttachments = createMemo(() =>
     prompt.current().filter((part): part is ImageAttachmentPart => part.type === "image"),
   )
+  const quoteReplies = createMemo(() =>
+    prompt.current().filter((part): part is QuoteReplyPart => part.type === "quote-reply"),
+  )
 
   const [store, setStore] = createPromptInputTransientState(
     () => prompt.capture(),
@@ -359,10 +365,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return prompt.context.items().filter((item) => !!item.comment?.trim()).length
   })
   const blank = createMemo(() => {
-    const text = prompt
-      .current()
-      .map((part) => ("content" in part ? part.content : ""))
-      .join("")
+    const text = promptText(prompt.current())
     return text.trim().length === 0 && imageAttachments().length === 0 && commentCount() === 0
   })
   const stopping = createMemo(() => working() && blank())
@@ -637,7 +640,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     setComposing(false)
     requestAnimationFrame(() => {
       if (composing()) return
-      reconcile(prompt.current().filter((part) => part.type !== "image"))
+      reconcile(prompt.current().filter((part) => part.type !== "image" && part.type !== "quote-reply"))
     })
   }
 
@@ -932,7 +935,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       () => prompt.current(),
       (parts) => {
         if (composing()) return
-        reconcile(parts.filter((part) => part.type !== "image"))
+        reconcile(parts.filter((part) => part.type !== "image" && part.type !== "quote-reply"))
       },
     ),
   )
@@ -1039,6 +1042,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const handleInput = () => {
     const rawParts = parseFromDOM()
     const images = imageAttachments()
+    const replies = quoteReplies()
     const cursorPosition = getCursorPosition(editorRef)
     const rawText =
       rawParts.length === 1 && rawParts[0]?.type === "text"
@@ -1047,7 +1051,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const hasNonText = rawParts.some((part) => part.type !== "text")
     const textContent = (editorRef.textContent ?? "").replace(/\u200B/g, "")
     const shouldReset =
-      textContent.length === 0 && rawText.replace(/\n/g, "").length === 0 && !hasNonText && images.length === 0
+      textContent.length === 0 &&
+      rawText.replace(/\n/g, "").length === 0 &&
+      !hasNonText &&
+      images.length === 0 &&
+      replies.length === 0
 
     if (shouldReset) {
       closePopover()
@@ -1082,12 +1090,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     resetHistoryNavigation()
 
     mirror.input = true
-    prompt.set([...rawParts, ...images], cursorPosition)
+    prompt.set([...rawParts, ...replies, ...images], cursorPosition)
     queueScroll()
   }
 
   const addPart = (part: ContentPart) => {
-    if (part.type === "image") return false
+    if (part.type === "image" || part.type === "quote-reply") return false
 
     const selection = window.getSelection()
     if (!selection) return false
@@ -1169,6 +1177,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const addToHistory = (prompt: Prompt, mode: "normal" | "shell") => {
     history.add(prompt, mode, mode === "shell" ? [] : historyComments())
+  }
+
+  const removeQuoteReply = (id: string) => {
+    prompt.set(
+      prompt.current().filter((part) => part.type !== "quote-reply" || part.id !== id),
+      prompt.cursor(),
+    )
   }
 
   createEffect(
@@ -1566,6 +1581,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 onRemove={removeAttachment}
                 removeLabel={language.t("prompt.attachment.remove")}
               />
+              <PromptQuoteReplies
+                replies={quoteReplies()}
+                title={language.t("session.quoteReply.title")}
+                removeLabel={language.t("prompt.attachment.remove")}
+                onRemove={removeQuoteReply}
+              />
               <div
                 class="relative min-h-[52px]"
                 onMouseDown={(e) => {
@@ -1738,6 +1759,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               }
               onRemove={removeAttachment}
               removeLabel={language.t("prompt.attachment.remove")}
+            />
+            <PromptQuoteReplies
+              replies={quoteReplies()}
+              title={language.t("session.quoteReply.title")}
+              removeLabel={language.t("prompt.attachment.remove")}
+              onRemove={removeQuoteReply}
             />
             <div
               class="relative"
@@ -2038,6 +2065,41 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     </div>
   )
 }
+
+const PromptQuoteReplies: Component<{
+  replies: QuoteReplyPart[]
+  title: string
+  removeLabel: string
+  onRemove: (id: string) => void
+}> = (props) => (
+  <Show when={props.replies.length > 0}>
+    <div data-component="prompt-quote-replies" class="px-3 pt-3">
+      <div data-slot="prompt-quote-replies-scroll" class="flex flex-col gap-2">
+        <For each={props.replies}>
+          {(reply) => (
+            <div data-component="prompt-quote-reply" class="group flex gap-2 rounded-lg px-3 py-2">
+              <Icon name="comment" size="small" class="mt-0.5 shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div data-slot="quote-reply-card-title">{props.title}</div>
+                <div data-slot="quote-reply-card-quote">{reply.quote}</div>
+                <div data-slot="quote-reply-card-reply">{reply.reply}</div>
+              </div>
+              <IconButton
+                data-action="prompt-quote-reply-remove"
+                type="button"
+                icon="close"
+                variant="ghost"
+                class="size-6 shrink-0 opacity-70 group-hover:opacity-100"
+                aria-label={props.removeLabel}
+                onClick={() => props.onRemove(reply.id)}
+              />
+            </div>
+          )}
+        </For>
+      </div>
+    </div>
+  </Show>
+)
 
 type ComposerAgentControlState = {
   title: string

@@ -20,6 +20,7 @@ import { setCursorPosition } from "./editor-dom"
 import { formatServerError } from "@/utils/server-errors"
 import { ScopedKey } from "@/utils/server-scope"
 import { createPromptSubmissionState } from "./submission-state"
+import { promptText } from "./quote-replies"
 
 type PendingPrompt = {
   abort: AbortController
@@ -48,7 +49,7 @@ type FollowupSendInput = {
   before?: () => Promise<boolean> | boolean
 }
 
-const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? part.content : "")).join("")
+const draftText = (prompt: Prompt) => promptText(prompt)
 
 const draftImages = (prompt: Prompt) => prompt.filter((part): part is ImageAttachmentPart => part.type === "image")
 
@@ -289,7 +290,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     })
     const currentPrompt = submission.prompt
     const context = submission.context
-    const text = currentPrompt.map((part) => ("content" in part ? part.content : "")).join("")
+    const text = promptText(currentPrompt)
     const images = input.imageAttachments().slice()
     const mode = input.mode()
 

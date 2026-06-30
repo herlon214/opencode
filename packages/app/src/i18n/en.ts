@@ -633,6 +633,11 @@ export const dict = {
   "session.messages.jumpToLatest": "Jump to latest",
 
   "session.context.addToContext": "Add {{selection}} to context",
+  "session.quoteReply.label": "Reply",
+  "session.quoteReply.title": "Reply to assistant",
+  "session.quoteReply.placeholder": "Type your reply...",
+  "session.quoteReply.footer": "Enter to add, Shift+Enter for newline",
+  "session.quoteReply.add": "Add reply",
   "session.todo.title": "Todos",
   "session.todo.collapse": "Collapse",
   "session.todo.expand": "Expand",
