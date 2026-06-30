@@ -46,7 +46,12 @@ export function isSessionNotFoundError(error: unknown, sessionID: string) {
   const unwrapped = unwrapNamedError(error)
   if (typeof unwrapped !== "object" || unwrapped === null) return false
   const value = unwrapped as Record<string, unknown>
-  return value._tag === "SessionNotFoundError" && value.sessionID === sessionID
+  if (value._tag === "SessionNotFoundError" && value.sessionID === sessionID) return true
+  if (value.name === "NotFoundError" && typeof value.data === "object" && value.data !== null) {
+    const message = (value.data as Record<string, unknown>).message
+    return typeof message === "string" && message === `Session not found: ${sessionID}`
+  }
+  return false
 }
 
 function isConfigInvalidErrorLike(error: unknown): error is ConfigInvalidError {

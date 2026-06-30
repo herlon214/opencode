@@ -172,4 +172,24 @@ describe("isSessionNotFoundError", () => {
       ),
     ).toBe(false)
   })
+
+  test("matches a generic NotFoundError from the v1 HTTP API for the requested session", () => {
+    const body = {
+      name: "NotFoundError",
+      data: { message: "Session not found: ses_missing" },
+    }
+
+    expect(isSessionNotFoundError(new Error(body.data.message, { cause: { body, status: 404 } }), "ses_missing")).toBe(
+      true,
+    )
+  })
+
+  test("rejects a generic NotFoundError for a different session", () => {
+    const body = {
+      name: "NotFoundError",
+      data: { message: "Session not found: ses_other" },
+    }
+
+    expect(isSessionNotFoundError(new Error(body.data.message, { cause: { body, status: 404 } }), "ses_tab")).toBe(false)
+  })
 })
