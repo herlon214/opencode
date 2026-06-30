@@ -1,4 +1,4 @@
-import { Component, createMemo } from "solid-js"
+import { Component, createMemo, Show } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import { useSync } from "@/context/sync"
 import { useSDK } from "@/context/sdk"
@@ -11,6 +11,8 @@ import { extractPromptFromParts } from "@/utils/prompt"
 import type { TextPart as SDKTextPart } from "@opencode-ai/sdk/v2/client"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { useLanguage } from "@/context/language"
+
+const FULL_SESSION = "__full-session"
 
 interface ForkableMessage {
   id: string
@@ -52,7 +54,8 @@ export const DialogFork: Component = () => {
       })
     }
 
-    return result.reverse()
+    result.reverse()
+    return [{ id: FULL_SESSION, text: language.t("dialog.fork.fullSession"), time: "" }, ...result]
   })
 
   const handleSelect = (item: ForkableMessage | undefined) => {
@@ -61,22 +64,25 @@ export const DialogFork: Component = () => {
     const sessionID = params.id
     if (!sessionID) return
 
-    const parts = sync().data.part[item.id] ?? []
-    const restored = extractPromptFromParts(parts, {
-      directory: sdk().directory,
-      attachmentName: language.t("common.attachment"),
-    })
     const dir = base64Encode(sdk().directory)
+    const fullSession = item.id === FULL_SESSION
+    const messageID = fullSession ? undefined : item.id
+    const restored = fullSession
+      ? undefined
+      : extractPromptFromParts(sync().data.part[item.id] ?? [], {
+          directory: sdk().directory,
+          attachmentName: language.t("common.attachment"),
+        })
 
     sdk()
-      .client.session.fork({ sessionID, messageID: item.id })
+      .client.session.fork({ sessionID, messageID })
       .then((forked) => {
         if (!forked.data) {
           showToast({ title: language.t("common.requestFailed") })
           return
         }
         dialog.close()
-        prompt.set(restored, undefined, { dir, id: forked.data.id })
+        if (restored) prompt.set(restored, undefined, { dir, id: forked.data.id })
         navigate(`/${dir}/session/${forked.data.id}`)
       })
       .catch((err: unknown) => {
@@ -99,7 +105,9 @@ export const DialogFork: Component = () => {
         {(item) => (
           <div class="w-full flex items-center gap-2">
             <span class="truncate flex-1 min-w-0 text-left font-normal">{item.text}</span>
-            <span class="text-text-weak shrink-0 font-normal">{item.time}</span>
+            <Show when={item.time}>
+              <span class="text-text-weak shrink-0 font-normal">{item.time}</span>
+            </Show>
           </div>
         )}
       </List>
