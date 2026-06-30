@@ -867,6 +867,9 @@ export const dict = {
     "Show edit, write, and patch tool parts expanded by default in the timeline",
   "settings.general.row.newLayoutDesigns.title": "New layout and designs",
   "settings.general.row.newLayoutDesigns.description": "Enable the redesigned layout, home, composer, and session UI",
+  "settings.general.row.collapseInProgress.title": "Collapse in-progress work",
+  "settings.general.row.collapseInProgress.description":
+    "Collapse reasoning, tool calls, and intermediate output into a single expandable block per turn",
   "settings.general.row.pinchZoom.title": "Pinch to zoom",
   "settings.general.row.pinchZoom.description": "Allow trackpad pinch and Ctrl-scroll gestures to zoom",
 

@@ -1,0 +1,54 @@
+export function reasoningHeading(text: string): string | undefined {
+  const markdown = text.replace(/\r\n?/g, "\n")
+
+  const html = markdown.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i)
+  if (html?.[1]) {
+    const value = cleanHeading(html[1].replace(/<[^>]+>/g, " "))
+    if (value) return value
+  }
+
+  return (
+    matchHeading(markdown, /^\s{0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/m) ??
+    matchHeading(markdown, /^([^\n]+)\n(?:=+|-+)\s*$/m) ??
+    matchHeading(markdown, /^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/m)
+  )
+}
+
+function matchHeading(markdown: string, pattern: RegExp): string | undefined {
+  const match = markdown.match(pattern)
+  if (!match?.[1]) return
+  const value = cleanHeading(match[1])
+  return value || undefined
+}
+
+function cleanHeading(value: string) {
+  return value
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~]+/g, "")
+    .trim()
+}
+
+export function formatDuration(input: number): string {
+  if (input < 1000) return `${input}ms`
+  if (input < 60000) return `${Math.round(input / 1000)}s`
+  if (input < 3600000) {
+    const minutes = Math.floor(input / 60000)
+    const seconds = Math.floor((input % 60000) / 1000)
+    return `${minutes}m ${seconds}s`
+  }
+  if (input < 86400000) {
+    const hours = Math.floor(input / 3600000)
+    const minutes = Math.floor((input % 3600000) / 60000)
+    return `${hours}h ${minutes}m`
+  }
+  const days = Math.floor(input / 86400000)
+  const hours = Math.floor((input % 86400000) / 3600000)
+  return `${days}d ${hours}h`
+}
+
+export function reasoningDuration(part: { time: { start: number; end?: number } }): number | undefined {
+  const end = part.time.end
+  if (end === undefined) return undefined
+  return Math.max(0, end - part.time.start)
+}

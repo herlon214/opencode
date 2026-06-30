@@ -61,6 +61,7 @@ import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
 import { readPartText } from "./message-part-text"
+import { reasoningHeading, reasoningDuration, formatDuration } from "./message-part-reasoning"
 
 async function writeClipboard(text: string): Promise<boolean> {
   const body = typeof document === "undefined" ? undefined : document.body
@@ -1657,15 +1658,38 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
 
 PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   const data = useData()
+  const i18n = useI18n()
   const part = () => props.part as ReasoningPart
   const streaming = createMemo(
     () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
   )
   const text = () => readPartText(data.store.part_text_accum_delta, part())
+  const heading = createMemo(() => (text() ? reasoningHeading(text()) : undefined))
+  const isDone = createMemo(() => part().time.end !== undefined)
+  const durationLabel = createMemo(() => {
+    const duration = reasoningDuration(part())
+    return duration === undefined ? undefined : formatDuration(duration)
+  })
 
   return (
     <Show when={text()}>
       <div data-component="reasoning-part" data-timeline-part-id={part().id}>
+        <div data-slot="reasoning-part-header">
+          <Show when={!isDone()}>
+            <span data-slot="reasoning-part-spinner">
+              <Spinner />
+            </span>
+          </Show>
+          <span data-slot="reasoning-part-title">
+            {isDone() ? i18n.t("ui.sessionTurn.status.thought") : i18n.t("ui.sessionTurn.status.thinking")}
+            <Show when={heading()}>
+              <span data-slot="reasoning-part-heading">: {heading()}</span>
+            </Show>
+            <Show when={durationLabel()}>
+              <span data-slot="reasoning-part-duration"> · {durationLabel()}</span>
+            </Show>
+          </span>
+        </div>
         <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
           <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
         </Show>

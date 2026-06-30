@@ -11,6 +11,7 @@ export function createTimelineProjection(input: {
   parts: (messageID: string) => Part[]
   status: Accessor<SessionStatus>
   showReasoningSummaries: Accessor<boolean>
+  collapseInProgress: Accessor<boolean>
 }) {
   const messageByID = createMemo(() => new Map(input.messages().map((message) => [message.id, message] as const)))
   const assistantMessagesByParent = createMemo(() => {
@@ -56,6 +57,7 @@ export function createTimelineProjection(input: {
             input.showReasoningSummaries(),
             input.status().type,
             activeMessageID() === userMessage.id,
+            input.collapseInProgress(),
           ),
         ),
       ),
@@ -87,6 +89,10 @@ export function createTimelineProjection(input: {
     const result = new Map<string, string>()
     rows().forEach((row) => {
       if (row._tag === "AssistantPart") result.set(row.userMessageID, row.group.key)
+      else if (row._tag === "InProgressGroup") {
+        const last = row.groups.at(-1)
+        if (last) result.set(row.userMessageID, last.group.key)
+      }
     })
     return result
   })

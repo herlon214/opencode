@@ -34,6 +34,7 @@ export interface Settings {
     showCustomAgents: boolean
     mobileTitlebarPosition: "top" | "bottom"
     newLayoutDesigns?: boolean
+    collapseInProgress: boolean
   }
   appearance: {
     fontSize: number
@@ -52,7 +53,7 @@ export interface Settings {
 export const monoDefault = "System Mono"
 export const sansDefault = "System Sans"
 export const terminalDefault = "JetBrainsMono Nerd Font Mono"
-export const newLayoutDesignsDefault = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
+export const newLayoutDesignsDefault = true
 
 const monoFallback =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
@@ -118,6 +119,7 @@ const defaultSettings: Settings = {
     editToolPartsExpanded: false,
     showCustomAgents: false,
     mobileTitlebarPosition: "top",
+    collapseInProgress: true,
   },
   appearance: {
     fontSize: 14,
@@ -251,6 +253,13 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         newLayoutDesigns,
         setNewLayoutDesigns(value: boolean) {
           setStore("general", "newLayoutDesigns", value)
+        },
+        collapseInProgress: withFallback(
+          () => store.general?.collapseInProgress,
+          defaultSettings.general.collapseInProgress,
+        ),
+        setCollapseInProgress(value: boolean) {
+          setStore("general", "collapseInProgress", value)
         },
       },
       visibility: {

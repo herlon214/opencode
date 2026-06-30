@@ -282,6 +282,42 @@
   color: var(--v2-text-text-muted);
   line-height: var(--line-height-normal);
 
+  [data-slot="reasoning-part-header"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    color: var(--text-weak);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 20px;
+    min-height: 20px;
+  }
+
+  [data-slot="reasoning-part-spinner"] {
+    display: inline-flex;
+    align-items: center;
+    width: 16px;
+    height: 16px;
+    color: var(--text-weak);
+  }
+
+  [data-slot="reasoning-part-title"] {
+    color: var(--text-weak);
+  }
+
+  [data-slot="reasoning-part-heading"] {
+    color: var(--text-weaker);
+    font-weight: var(--font-weight-regular);
+  }
+
+  [data-slot="reasoning-part-duration"] {
+    color: var(--text-weaker);
+    font-weight: var(--font-weight-regular);
+    font-variant-numeric: tabular-nums;
+  }
+
   [data-component="markdown"] {
     margin-top: 16px;
     font-style: normal;
@@ -638,6 +674,42 @@
     color: var(--icon-weaker);
     cursor: pointer;
   }
+}
+
+[data-component="in-progress-group-trigger"] {
+  width: 100%;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0px;
+  cursor: default;
+
+  [data-slot="in-progress-group-title"] {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  [data-slot="in-progress-group-spinner"] {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-weak);
+  }
+
+  [data-slot="collapsible-arrow"] {
+    color: var(--icon-weaker);
+    cursor: pointer;
+  }
+}
+
+[data-component="in-progress-group-list"] {
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 [data-component="context-tool-group-list"] {
@@ -1314,6 +1386,16 @@ body:not([data-new-layout]) {
     [data-component="markdown"],
     [data-component="markdown"] :is(strong, b) {
       color: var(--text-weak);
+    }
+
+    [data-slot="reasoning-part-header"],
+    [data-slot="reasoning-part-title"] {
+      color: var(--text-weak);
+    }
+
+    [data-slot="reasoning-part-heading"],
+    [data-slot="reasoning-part-duration"] {
+      color: var(--text-weaker);
     }
   }
 

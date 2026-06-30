@@ -4,10 +4,12 @@ import {
   createSignal,
   For,
   Index,
+  Match,
   on,
   onCleanup,
   onMount,
   Show,
+  Switch,
   type Accessor,
   type JSX,
 } from "solid-js"
@@ -19,6 +21,7 @@ import { createVirtualizer, defaultRangeExtractor, elementScroll, type VirtualIt
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { Button } from "@opencode-ai/ui/button"
 import { Card } from "@opencode-ai/ui/card"
+import { Collapsible } from "@opencode-ai/ui/collapsible"
 import {
   ContextToolGroup,
   Message,
@@ -41,6 +44,7 @@ import { InlineInput } from "@opencode-ai/ui/inline-input"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { SessionRetry } from "@opencode-ai/session-ui/session-retry"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
+import { Spinner } from "@opencode-ai/ui/spinner"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { TextReveal } from "@opencode-ai/ui/text-reveal"
@@ -74,6 +78,8 @@ import { sessionTitle } from "@/utils/session-title"
 import { scheduleConnectedMeasure } from "./measure"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
+import type { PartGroup } from "@opencode-ai/session-ui/message-part"
+import { formatDuration } from "@opencode-ai/session-ui/message-part-reasoning"
 import { filterVirtualIndexes } from "./virtual-items"
 
 const emptyMessages: MessageType[] = []
@@ -332,6 +338,7 @@ export function MessageTimeline(props: {
     parts: getMsgParts,
     status: sessionStatus,
     showReasoningSummaries: settings.general.showReasoningSummaries,
+    collapseInProgress: settings.general.collapseInProgress,
   })
   const activeMessageID = projection.activeMessageID
   const assistantMessagesByParent = projection.assistantMessagesByParent
@@ -981,68 +988,73 @@ export function MessageTimeline(props: {
     }
   }
 
-  const renderAssistantPartGroup = (row: Accessor<TimelineRowMap["AssistantPart"]>, onSizeChange?: () => void) => {
-    if (row().group.type === "context") {
-      const parts = createMemo(() => {
-        const group = row().group
-        if (group.type !== "context") return emptyTools
-        return group.refs
-          .map((ref) => getMsgPart(ref.messageID, ref.partID))
-          .filter((part): part is ToolPart => part?.type === "tool")
-      })
-
-      return (
-        <ContextToolGroup
-          parts={parts()}
-          busy={
-            workingTurn(row().userMessageID) && lastAssistantGroupKey().get(row().userMessageID) === row().group.key
-          }
-          onSizeChange={onSizeChange}
-        />
-      )
-    }
-
-    const message = createMemo(() => {
-      const group = row().group
-      if (group.type !== "part") return
-      return messageByID().get(group.ref.messageID)
-    })
-    const part = createMemo(() => {
-      const group = row().group
-      if (group.type !== "part") return
-      return getMsgPart(group.ref.messageID, group.ref.partID)
-    })
-    const defaultOpen = createMemo(() => {
-      const item = part()
-      if (!item) return
-      return partDefaultOpen(item, settings.general.shellToolPartsExpanded(), settings.general.editToolPartsExpanded())
-    })
-
+  function renderPartGroup(
+    group: Accessor<PartGroup>,
+    userMessageID: Accessor<string>,
+    onSizeChange?: () => void,
+  ) {
     return (
-      <Show when={message()}>
-        {(message) => (
-          <Show when={part()}>
-            {(part) => (
-              <MessagePart
-                part={part()}
-                message={message()}
-                showAssistantCopyPartID={assistantCopyPartID(row().userMessageID)}
-                turnDurationMs={turnDurationMs(row().userMessageID)}
-                turnOutputTokens={turnOutputTokens(row().userMessageID)}
-                useV2Actions={settings.general.newLayoutDesigns()}
-                defaultOpen={defaultOpen()}
-                toolOpen={toolOpen[part().id] ?? defaultOpen()}
-                onToolOpenChange={(open) => setToolOpen(part().id, open)}
-                deferToolContent
-                virtualizeDiff={false}
-                onContentRendered={onSizeChange}
-              />
+      <Switch
+        fallback={
+          <Show when={messageForGroup(group())}>
+            {(message) => (
+              <Show when={partForGroup(group())}>
+                {(part) => (
+                  <MessagePart
+                    part={part()}
+                    message={message()}
+                    showAssistantCopyPartID={assistantCopyPartID(userMessageID())}
+                    turnDurationMs={turnDurationMs(userMessageID())}
+                    turnOutputTokens={turnOutputTokens(userMessageID())}
+                    useV2Actions={settings.general.newLayoutDesigns()}
+                    defaultOpen={defaultOpenForPart(part())}
+                    toolOpen={toolOpen[part().id] ?? defaultOpenForPart(part())}
+                    onToolOpenChange={(open) => setToolOpen(part().id, open)}
+                    deferToolContent
+                    virtualizeDiff={false}
+                    onContentRendered={onSizeChange}
+                  />
+                )}
+              </Show>
             )}
           </Show>
-        )}
-      </Show>
+        }
+      >
+        <Match when={group().type === "context"}>
+          <ContextToolGroup
+            parts={contextParts(group())}
+            busy={workingTurn(userMessageID()) && lastAssistantGroupKey().get(userMessageID()) === group().key}
+            onSizeChange={onSizeChange}
+          />
+        </Match>
+      </Switch>
     )
   }
+
+  function messageForGroup(group: PartGroup) {
+    if (group.type !== "part") return
+    return messageByID().get(group.ref.messageID)
+  }
+
+  function partForGroup(group: PartGroup) {
+    if (group.type !== "part") return
+    return getMsgPart(group.ref.messageID, group.ref.partID)
+  }
+
+  function contextParts(group: PartGroup): ToolPart[] {
+    if (group.type !== "context") return emptyTools
+    return group.refs
+      .map((ref) => getMsgPart(ref.messageID, ref.partID))
+      .filter((part): part is ToolPart => part?.type === "tool")
+  }
+
+  function defaultOpenForPart(part: PartType | undefined) {
+    if (!part) return
+    return partDefaultOpen(part, settings.general.shellToolPartsExpanded(), settings.general.editToolPartsExpanded())
+  }
+
+  const renderAssistantPartGroup = (row: Accessor<TimelineRowMap["AssistantPart"]>, onSizeChange?: () => void) =>
+    renderPartGroup(() => row().group, () => row().userMessageID, onSizeChange)
 
   function TimelineRowFrame(input: { row: Accessor<FramedTimelineRow>; children: JSX.Element }) {
     const anchor = () => {
@@ -1070,6 +1082,79 @@ export function MessageTimeline(props: {
           {input.children}
         </div>
       </div>
+    )
+  }
+
+  function InProgressGroupView(props: {
+    row: Accessor<TimelineRowByTag<"InProgressGroup">>
+    onSizeChange?: () => void
+  }) {
+    const language = useLanguage()
+    const active = createMemo(() => props.row().active)
+    const [open, setOpen] = createSignal(active())
+    const groupCount = createMemo(() => props.row().groups.length)
+    const durationLabel = createMemo(() => {
+      const ms = turnDurationMs(props.row().userMessageID)
+      return ms === undefined ? undefined : formatDuration(ms)
+    })
+
+    createEffect(
+      on(active, (isActive) => {
+        if (isActive) setOpen(true)
+      }),
+    )
+
+    const label = createMemo(() => {
+      if (active()) return language.t("ui.sessionTurn.status.working")
+      const duration = durationLabel()
+      if (duration) return language.t("ui.sessionTurn.status.workedFor", { duration })
+      return language.t("ui.sessionTurn.status.working")
+    })
+
+    return (
+      <Collapsible
+        open={open()}
+        onOpenChange={setOpen}
+        variant="ghost"
+        class="in-progress-collapsible"
+        data-timeline-part-ids={props
+          .row()
+          .groups.map((item) => item.group.key)
+          .join(",")}
+      >
+        <Collapsible.Trigger>
+          <div data-component="in-progress-group-trigger">
+            <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
+              <Show when={active()}>
+                <span data-slot="in-progress-group-spinner">
+                  <Spinner class="size-4" />
+                </span>
+              </Show>
+              <span data-slot="in-progress-group-label" class="shrink-0">
+                {label()}
+              </span>
+              <span
+                data-slot="in-progress-group-summary"
+                class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-normal text-text-base"
+              >
+                {groupCount()} {language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}
+              </span>
+            </span>
+            <Collapsible.Arrow />
+          </div>
+        </Collapsible.Trigger>
+        <Collapsible.Content>
+          <div data-component="in-progress-group-list">
+            <Index each={props.row().groups}>
+              {(groupAccessor) => (
+                <Show when={groupAccessor().group}>
+                  {(group) => renderPartGroup(group, () => props.row().userMessageID, props.onSizeChange)}
+                </Show>
+              )}
+            </Index>
+          </div>
+        </Collapsible.Content>
+      </Collapsible>
     )
   }
 
@@ -1173,6 +1258,16 @@ export function MessageTimeline(props: {
               >
                 {renderAssistantPartGroup(assistantPartRow, onSizeChange)}
               </div>
+            </div>
+          </TimelineRowFrame>
+        )
+      }
+      case "InProgressGroup": {
+        const inProgressRow = row as Accessor<TimelineRowByTag<"InProgressGroup">>
+        return (
+          <TimelineRowFrame row={inProgressRow}>
+            <div data-slot="session-turn-message-container" class="w-full px-4 md:px-5">
+              <InProgressGroupView row={inProgressRow} onSizeChange={onSizeChange} />
             </div>
           </TimelineRowFrame>
         )

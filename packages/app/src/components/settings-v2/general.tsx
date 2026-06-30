@@ -330,6 +330,18 @@ export const SettingsGeneralV2: Component<{
           </div>
         </SettingsRowV2>
 
+        <SettingsRowV2
+          title={language.t("settings.general.row.collapseInProgress.title")}
+          description={language.t("settings.general.row.collapseInProgress.description")}
+        >
+          <div data-action="settings-collapse-in-progress">
+            <Switch
+              checked={settings.general.collapseInProgress()}
+              onChange={(checked) => settings.general.setCollapseInProgress(checked)}
+            />
+          </div>
+        </SettingsRowV2>
+
         <Show when={mobile() && import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"}>
           <SettingsRowV2
             title={language.t("settings.general.row.mobileTitlebarBottom.title")}

@@ -1,6 +1,7 @@
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { AssistantMessage, Part, SessionStatus, SnapshotFileDiff, UserMessage } from "@opencode-ai/sdk/v2"
 import { groupParts, PartGroup, renderable } from "@opencode-ai/session-ui/message-part"
+import { reasoningHeading } from "@opencode-ai/session-ui/message-part-reasoning"
 import { Data, Equal } from "effect"
 
 export type SummaryDiff = SnapshotFileDiff & { file: string }
@@ -22,6 +23,12 @@ export type TimelineRowMap = {
     userMessageID: string
     group: PartGroup
     previousAssistantPart: boolean
+  }
+  InProgressGroup: {
+    userMessageID: string
+    groups: { type: "part"; group: PartGroup }[]
+    previousAssistantPart: boolean
+    active: boolean
   }
   Thinking: { userMessageID: string; reasoningHeading?: string; reasoningTokens: number }
   Retry: { userMessageID: string }
@@ -49,6 +56,12 @@ export namespace TimelineRow {
     group: PartGroup
     previousAssistantPart: boolean
   }> {}
+  export class InProgressGroup extends Data.TaggedClass("InProgressGroup")<{
+    userMessageID: string
+    groups: { type: "part"; group: PartGroup }[]
+    previousAssistantPart: boolean
+    active: boolean
+  }> {}
   export class Thinking extends Data.TaggedClass("Thinking")<{
     userMessageID: string
     reasoningHeading?: string
@@ -72,6 +85,7 @@ export namespace TimelineRow {
     | UserMessage
     | TurnDivider
     | AssistantPart
+    | InProgressGroup
     | Thinking
     | DiffSummary
     | Error
@@ -89,6 +103,8 @@ export namespace TimelineRow {
         return `turn-divider:${row.userMessageID}:${row.label}`
       case "AssistantPart":
         return `assistant-part:${row.userMessageID}:${row.group.key}`
+      case "InProgressGroup":
+        return `in-progress-group:${row.userMessageID}`
       case "Thinking":
         return `thinking:${row.userMessageID}`
       case "DiffSummary":
@@ -114,6 +130,7 @@ export namespace Timeline {
     showReasoning: boolean,
     status: SessionStatus["type"],
     isActive: boolean,
+    collapseInProgress: boolean,
   ) {
     const rows: TimelineRow.TimelineRow[] = []
 
@@ -127,7 +144,7 @@ export namespace Timeline {
 
     const assistantPartRefs = assistantMessages.flatMap((message, messageIndex) =>
       getMessageParts(message.id)
-        .filter((part) => renderable(part, showReasoning))
+        .filter((part) => renderable(part, showReasoning || collapseInProgress))
         .map((part) => ({ messageID: message.id, messageIndex, part })),
     )
     const assistantItems =
@@ -174,28 +191,76 @@ export namespace Timeline {
     }
 
     let assistantGroupIndex = 0
-    assistantItems.forEach((item) => {
-      if (item.type === "interrupted") {
-        rows.push(
-          new TimelineRow.TurnDivider({
-            userMessageID: userMessage.id,
-            label: "interrupted",
-          }),
-        )
-        return
+    let emittedInProgressGroup = false
+
+    if (collapseInProgress) {
+      const allPartItems = assistantItems.filter(
+        (item): item is { type: "part"; group: PartGroup } => item.type === "part",
+      )
+      const finalTextIndex = findFinalTextGroup(allPartItems, getMessageParts)
+      const hasFinal = finalTextIndex !== -1
+      const finalItem = hasFinal ? allPartItems[finalTextIndex]! : undefined
+
+      const inProgressItems = hasFinal ? allPartItems.slice(0, finalTextIndex) : allPartItems
+      const inProgressIDs = new Set(inProgressItems.map((item) => item.group.key))
+
+      let currentSegment: { type: "part"; group: PartGroup }[] = []
+      for (const item of assistantItems) {
+        if (item.type === "interrupted") {
+          emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, isActive, status, error)
+          assistantGroupIndex += currentSegment.length
+          if (currentSegment.length > 0) emittedInProgressGroup = true
+          rows.push(new TimelineRow.TurnDivider({ userMessageID: userMessage.id, label: "interrupted" }))
+          currentSegment = []
+          continue
+        }
+
+        if (inProgressIDs.has(item.group.key)) {
+          currentSegment.push(item)
+        }
+      }
+      if (currentSegment.length > 0) {
+        emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, isActive, status, error)
+        assistantGroupIndex += currentSegment.length
+        emittedInProgressGroup = true
       }
 
-      rows.push(
-        new TimelineRow.AssistantPart({
-          userMessageID: userMessage.id,
-          group: item.group,
-          previousAssistantPart: assistantGroupIndex > 0,
-        }),
-      )
-      assistantGroupIndex += 1
-    })
+      if (finalItem) {
+        rows.push(
+          new TimelineRow.AssistantPart({
+            userMessageID: userMessage.id,
+            group: finalItem.group,
+            previousAssistantPart: assistantGroupIndex > 0,
+          }),
+        )
+        assistantGroupIndex += 1
+      }
+    } else {
+      for (const item of assistantItems) {
+        if (item.type === "interrupted") {
+          rows.push(new TimelineRow.TurnDivider({ userMessageID: userMessage.id, label: "interrupted" }))
+          continue
+        }
 
-    if (isActive && status === "busy" && !error && (showReasoning ? assistantPartRefs.length === 0 : true)) {
+        rows.push(
+          new TimelineRow.AssistantPart({
+            userMessageID: userMessage.id,
+            group: item.group,
+            previousAssistantPart: assistantGroupIndex > 0,
+          }),
+        )
+        assistantGroupIndex += 1
+      }
+    }
+
+    const showThinkingShimmer =
+      isActive &&
+      status === "busy" &&
+      !error &&
+      !(collapseInProgress && emittedInProgressGroup) &&
+      (!showReasoning || assistantPartRefs.length === 0)
+
+    if (showThinkingShimmer) {
       const reasoningTexts = assistantMessages
         .flatMap((message) => getMessageParts(message.id))
         .map((part) => (part.type === "reasoning" ? part.text ?? "" : ""))
@@ -250,39 +315,38 @@ export namespace Timeline {
     return typeof value.file === "string"
   }
 
-  function reasoningHeading(text: string) {
-    const markdown = text.replace(/\r\n?/g, "\n")
-    const html = markdown.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i)
-    if (html?.[1]) {
-      const value = cleanHeading(html[1].replace(/<[^>]+>/g, " "))
-      if (value) return value
+  function findFinalTextGroup(
+    items: { type: "part"; group: PartGroup }[],
+    getMessageParts: (messageID: string) => Part[],
+  ): number {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i]
+      const group = item.group
+      if (group.type !== "part") continue
+      const part = getMessageParts(group.ref.messageID).find((p) => p.id === group.ref.partID)
+      if (part?.type === "text" && part.text?.trim()) return i
     }
-
-    const atx = markdown.match(/^\s{0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/m)
-    if (atx?.[1]) {
-      const value = cleanHeading(atx[1])
-      if (value) return value
-    }
-
-    const setext = markdown.match(/^([^\n]+)\n(?:=+|-+)\s*$/m)
-    if (setext?.[1]) {
-      const value = cleanHeading(setext[1])
-      if (value) return value
-    }
-
-    const strong = markdown.match(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/m)
-    if (strong?.[1]) {
-      const value = cleanHeading(strong[1])
-      if (value) return value
-    }
+    return -1
   }
 
-  function cleanHeading(value: string) {
-    return value
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/[*_~]+/g, "")
-      .trim()
+  function emitInProgressSegment(
+    rows: TimelineRow.TimelineRow[],
+    segment: { type: "part"; group: PartGroup }[],
+    userMessageID: string,
+    assistantGroupIndex: number,
+    isActive: boolean,
+    status: SessionStatus["type"],
+    error: { name: string; data?: { message?: unknown } } | undefined,
+  ) {
+    if (segment.length === 0) return
+    rows.push(
+      new TimelineRow.InProgressGroup({
+        userMessageID,
+        groups: segment,
+        previousAssistantPart: assistantGroupIndex > 0,
+        active: isActive && status === "busy" && !error,
+      }),
+    )
   }
 
   function unwrapErrorMessage(message: string) {
