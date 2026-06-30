@@ -35,6 +35,7 @@ export interface Settings {
     mobileTitlebarPosition: "top" | "bottom"
     newLayoutDesigns?: boolean
     collapseInProgress: boolean
+    focusMode: boolean
   }
   appearance: {
     fontSize: number
@@ -120,6 +121,7 @@ const defaultSettings: Settings = {
     showCustomAgents: false,
     mobileTitlebarPosition: "top",
     collapseInProgress: true,
+    focusMode: false,
   },
   appearance: {
     fontSize: 14,
@@ -260,6 +262,10 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         ),
         setCollapseInProgress(value: boolean) {
           setStore("general", "collapseInProgress", value)
+        },
+        focusMode: withFallback(() => store.general?.focusMode, defaultSettings.general.focusMode),
+        setFocusMode(value: boolean) {
+          setStore("general", "focusMode", value)
         },
       },
       visibility: {

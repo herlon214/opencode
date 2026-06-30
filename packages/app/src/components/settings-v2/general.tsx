@@ -342,6 +342,18 @@ export const SettingsGeneralV2: Component<{
           </div>
         </SettingsRowV2>
 
+        <SettingsRowV2
+          title={language.t("settings.general.row.focusMode.title")}
+          description={language.t("settings.general.row.focusMode.description")}
+        >
+          <div data-action="settings-focus-mode">
+            <Switch
+              checked={settings.general.focusMode()}
+              onChange={(checked) => settings.general.setFocusMode(checked)}
+            />
+          </div>
+        </SettingsRowV2>
+
         <Show when={mobile() && import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"}>
           <SettingsRowV2
             title={language.t("settings.general.row.mobileTitlebarBottom.title")}

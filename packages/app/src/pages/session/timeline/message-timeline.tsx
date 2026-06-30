@@ -1091,7 +1091,8 @@ export function MessageTimeline(props: {
   }) {
     const language = useLanguage()
     const active = createMemo(() => props.row().active)
-    const [open, setOpen] = createSignal(active())
+    const focus = settings.general.focusMode
+    const [open, setOpen] = createSignal(!focus() && active())
     const groupCount = createMemo(() => props.row().groups.length)
     const durationLabel = createMemo(() => {
       const ms = turnDurationMs(props.row().userMessageID)
@@ -1100,7 +1101,7 @@ export function MessageTimeline(props: {
 
     createEffect(
       on(active, (isActive) => {
-        if (isActive) setOpen(true)
+        if (isActive && !focus()) setOpen(true)
       }),
     )
 

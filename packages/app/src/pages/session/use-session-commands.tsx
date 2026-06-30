@@ -276,6 +276,19 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     )
   }
 
+  const toggleFocusMode = () => {
+    const next = !settings.general.focusMode()
+    settings.general.setFocusMode(next)
+    showToast({
+      title: next
+        ? language.t("toast.focusMode.on.title")
+        : language.t("toast.focusMode.off.title"),
+      description: next
+        ? language.t("toast.focusMode.on.description")
+        : language.t("toast.focusMode.off.description"),
+    })
+  }
+
   const toggleAutoAccept = () => {
     const sessionID = params.id
     if (sessionID) permission.toggleAutoAccept(sessionID, sdk().directory)
@@ -434,6 +447,15 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       slash: "redo",
       disabled: !params.id || !info()?.revert?.messageID,
       onSelect: redo,
+    }),
+    sessionCommand({
+      id: "session.focus",
+      title: settings.general.focusMode()
+        ? language.t("command.session.focus.disable")
+        : language.t("command.session.focus.enable"),
+      description: language.t("command.session.focus.description"),
+      slash: "focus",
+      onSelect: toggleFocusMode,
     }),
     sessionCommand({
       id: "session.compact",

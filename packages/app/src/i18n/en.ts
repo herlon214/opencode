@@ -84,6 +84,9 @@ export const dict = {
   "command.session.redo.description": "Redo the last undone message",
   "command.session.compact": "Compact session",
   "command.session.compact.description": "Summarize the session to reduce context size",
+  "command.session.focus.enable": "Enable focus mode",
+  "command.session.focus.disable": "Disable focus mode",
+  "command.session.focus.description": "Collapse in-progress steps by default",
   "command.session.fork": "Fork from message",
   "command.session.fork.description": "Create a new session from a previous message",
   "command.session.share": "Share session",
@@ -511,6 +514,11 @@ export const dict = {
   "toast.session.share.failed.title": "Failed to share session",
   "toast.session.share.failed.description": "An error occurred while sharing the session",
 
+  "toast.focusMode.on.title": "Focus mode on",
+  "toast.focusMode.on.description": "In-progress steps will be collapsed by default",
+  "toast.focusMode.off.title": "Focus mode off",
+  "toast.focusMode.off.description": "In-progress steps will be shown by default",
+
   "toast.session.unshare.success.title": "Session unshared",
   "toast.session.unshare.success.description": "Session unshared successfully!",
   "toast.session.unshare.failed.title": "Failed to unshare session",
@@ -870,6 +878,8 @@ export const dict = {
   "settings.general.row.collapseInProgress.title": "Collapse in-progress work",
   "settings.general.row.collapseInProgress.description":
     "Collapse reasoning, tool calls, and intermediate output into a single expandable block per turn",
+  "settings.general.row.focusMode.title": "Focus mode",
+  "settings.general.row.focusMode.description": "Collapse the in-progress steps block by default instead of expanding it",
   "settings.general.row.pinchZoom.title": "Pinch to zoom",
   "settings.general.row.pinchZoom.description": "Allow trackpad pinch and Ctrl-scroll gestures to zoom",
 

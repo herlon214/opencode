@@ -75,6 +75,9 @@ export const dict = {
   "command.session.redo.description": "Refazer a última mensagem desfeita",
   "command.session.compact": "Compactar sessão",
   "command.session.compact.description": "Resumir a sessão para reduzir o tamanho do contexto",
+  "command.session.focus.enable": "Ativar modo foco",
+  "command.session.focus.disable": "Desativar modo foco",
+  "command.session.focus.description": "Recolher as etapas em andamento por padrão",
   "command.session.fork": "Bifurcar da mensagem",
   "command.session.fork.description": "Criar uma nova sessão a partir de uma mensagem anterior",
   "command.session.share": "Compartilhar sessão",
@@ -396,6 +399,11 @@ export const dict = {
   "toast.session.share.success.description": "URL compartilhada copiada para a área de transferência!",
   "toast.session.share.failed.title": "Falha ao compartilhar sessão",
   "toast.session.share.failed.description": "Ocorreu um erro ao compartilhar a sessão",
+
+  "toast.focusMode.on.title": "Modo foco ativado",
+  "toast.focusMode.on.description": "As etapas em andamento serão recolhidas por padrão",
+  "toast.focusMode.off.title": "Modo foco desativado",
+  "toast.focusMode.off.description": "As etapas em andamento serão exibidas por padrão",
   "toast.session.unshare.success.title": "Sessão não compartilhada",
   "toast.session.unshare.success.description": "Sessão deixou de ser compartilhada com sucesso!",
   "toast.session.unshare.failed.title": "Falha ao parar de compartilhar sessão",
@@ -598,6 +606,8 @@ export const dict = {
   "settings.general.row.editToolPartsExpanded.title": "Expandir partes da ferramenta de edição",
   "settings.general.row.editToolPartsExpanded.description":
     "Mostrar partes das ferramentas de edição, escrita e patch expandidas por padrão na linha do tempo",
+  "settings.general.row.focusMode.title": "Modo foco",
+  "settings.general.row.focusMode.description": "Recolher o bloco de etapas em andamento por padrão em vez de expandi-lo",
   "settings.general.row.wayland.title": "Usar Wayland nativo",
   "settings.general.row.wayland.description": "Desabilitar fallback X11 no Wayland. Requer reinicialização.",
   "settings.general.row.wayland.tooltip":

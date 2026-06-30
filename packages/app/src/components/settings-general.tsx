@@ -364,6 +364,18 @@ export const SettingsGeneral: Component = () => {
             />
           </div>
         </SettingsRow>
+
+        <SettingsRow
+          title={language.t("settings.general.row.focusMode.title")}
+          description={language.t("settings.general.row.focusMode.description")}
+        >
+          <div data-action="settings-focus-mode">
+            <Switch
+              checked={settings.general.focusMode()}
+              onChange={(checked) => settings.general.setFocusMode(checked)}
+            />
+          </div>
+        </SettingsRow>
       </SettingsList>
     </div>
   )
