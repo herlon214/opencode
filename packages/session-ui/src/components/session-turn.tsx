@@ -352,6 +352,7 @@ export function SessionTurn(
   const assistantDerived = createMemo(() => {
     let visible = 0
     let reason: string | undefined
+    let reasoningChars = 0
     const show = showReasoningSummaries()
     for (const message of assistantMessages()) {
       for (const part of list(data.store.part?.[message.id], emptyParts)) {
@@ -359,15 +360,17 @@ export function SessionTurn(
           visible++
         }
         if (part.type === "reasoning" && part.text) {
+          reasoningChars += part.text.length
           const h = heading(part.text)
           if (h) reason = h
         }
       }
     }
-    return { visible, reason }
+    return { visible, reason, reasoningChars }
   })
   const assistantVisible = createMemo(() => assistantDerived().visible)
   const reasoningHeading = createMemo(() => assistantDerived().reason)
+  const reasoningTokens = createMemo(() => Math.round(assistantDerived().reasoningChars / 3))
   const showThinking = createMemo(() => {
     if (!working() || !!error()) return false
     if (status().type === "retry") return false
@@ -421,6 +424,9 @@ export function SessionTurn(
               <Show when={showThinking()}>
                 <div data-slot="session-turn-thinking">
                   <TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />
+                  <Show when={reasoningTokens() > 0}>
+                    <span data-slot="session-turn-thinking-tokens">({reasoningTokens()} tokens)</span>
+                  </Show>
                   <Show when={!showReasoningSummaries()}>
                     <TextReveal
                       text={reasoningHeading()}

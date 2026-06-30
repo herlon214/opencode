@@ -70,6 +70,12 @@
     font-weight: var(--font-weight-regular);
   }
 
+  [data-slot="session-turn-thinking-tokens"] {
+    flex-shrink: 0;
+    color: var(--text-weaker);
+    font-weight: var(--font-weight-regular);
+  }
+
   .error-card {
     color: var(--v2-text-text-base);
     max-height: 240px;
