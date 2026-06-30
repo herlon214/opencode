@@ -32,6 +32,10 @@ const channel = (() => {
   return "dev"
 })()
 
+// Skip signing/notarization for fast local builds. Produces an unpacked .app
+// you can run directly with `open`. Export OPENCODE_UNSIGNED=1 to enable.
+const unsigned = process.env.OPENCODE_UNSIGNED === "1"
+
 const APP_IDS = {
   dev: "ai.opencode.desktop.dev",
   beta: "ai.opencode.desktop.beta",
@@ -63,15 +67,16 @@ const getBase = (appId: string): Configuration => ({
   mac: {
     category: "public.app-category.developer-tools",
     icon: `resources/icons/icon.icns`,
-    hardenedRuntime: true,
+    hardenedRuntime: !unsigned,
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
     entitlementsInherit: "resources/entitlements.plist",
-    notarize: true,
-    target: ["dmg", "zip"],
+    identity: unsigned ? null : undefined,
+    notarize: !unsigned && channel !== "dev",
+    target: unsigned ? ["dir"] : ["dmg", "zip"],
   },
   dmg: {
-    sign: true,
+    sign: !unsigned,
   },
   protocols: {
     name: "OpenCode",
