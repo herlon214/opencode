@@ -199,7 +199,12 @@ export namespace Timeline {
       const allPartItems = assistantItems.filter(
         (item): item is { type: "part"; group: PartGroup } => item.type === "part",
       )
-      const finalTextIndex = findFinalTextGroup(allPartItems, getMessageParts)
+      // Only the last assistant message can contribute the turn's final text. An earlier
+      // message's concluding text is intermediate; treating it as final would slice off
+      // every later (still-streaming) part from the in-progress group, freezing the view
+      // until the real final text arrives.
+      const lastAssistantMessageID = assistantMessages.at(-1)?.id
+      const finalTextIndex = findFinalTextGroup(allPartItems, getMessageParts, lastAssistantMessageID)
       const hasFinal = finalTextIndex !== -1
       const finalItem = hasFinal ? allPartItems[finalTextIndex]! : undefined
 
@@ -322,11 +327,13 @@ export namespace Timeline {
   function findFinalTextGroup(
     items: { type: "part"; group: PartGroup }[],
     getMessageParts: (messageID: string) => Part[],
+    lastAssistantMessageID: string | undefined,
   ): number {
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i]
       const group = item.group
       if (group.type !== "part") continue
+      if (group.ref.messageID !== lastAssistantMessageID) continue
       const part = getMessageParts(group.ref.messageID).find((p) => p.id === group.ref.partID)
       if (part?.type === "text" && part.text?.trim()) return i
     }
