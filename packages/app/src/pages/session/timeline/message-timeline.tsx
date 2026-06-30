@@ -957,6 +957,13 @@ export function MessageTimeline(props: {
     return end - message.time.created
   }
 
+  const turnOutputTokens = (userMessageID: string) => {
+    return (assistantMessagesByParent().get(userMessageID) ?? emptyAssistantMessages).reduce<number>(
+      (sum, item) => sum + (item.tokens.output ?? 0),
+      0,
+    )
+  }
+
   const assistantCopyPartID = (userMessageID: string) => {
     if (workingTurn(userMessageID)) return null
     const messages = assistantMessagesByParent().get(userMessageID) ?? emptyAssistantMessages
@@ -1021,6 +1028,7 @@ export function MessageTimeline(props: {
                 message={message()}
                 showAssistantCopyPartID={assistantCopyPartID(row().userMessageID)}
                 turnDurationMs={turnDurationMs(row().userMessageID)}
+                turnOutputTokens={turnOutputTokens(row().userMessageID)}
                 useV2Actions={settings.general.newLayoutDesigns()}
                 defaultOpen={defaultOpen()}
                 toolOpen={toolOpen[part().id] ?? defaultOpen()}
