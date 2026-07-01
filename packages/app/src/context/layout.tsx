@@ -65,6 +65,7 @@ type SessionView = {
   pendingMessage?: string
   pendingMessageAt?: number
   todoCollapsed?: boolean
+  reviewPanelOpened?: boolean
 }
 
 type TabHandoff = {
@@ -208,18 +209,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         }
       })()
 
-      const migratedReview = (() => {
-        if (!isRecord(review)) return review
-        if (typeof review.panelOpened === "boolean") return review
-
-        const opened =
-          isRecord(fileTree) && typeof fileTree.opened === "boolean" ? fileTree.opened : DEFAULT_REVIEW_PANEL_OPENED
-        return {
-          ...review,
-          panelOpened: opened,
-        }
-      })()
-
       const sessionTabs = migrateLegacySessionStateKeys(value.sessionTabs)
       const sessionView = migrateLegacySessionStateKeys(value.sessionView)
       const migratedSessionTabs = (() => {
@@ -248,7 +237,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
       if (
         migratedSidebar === sidebar &&
-        migratedReview === review &&
         migratedFileTree === fileTree &&
         migratedSessionTabs === value.sessionTabs &&
         sessionView === value.sessionView
@@ -259,7 +247,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       return {
         ...value,
         sidebar: migratedSidebar,
-        review: migratedReview,
+        review,
         fileTree: migratedFileTree,
         sessionTabs: migratedSessionTabs,
         sessionView,
@@ -282,7 +270,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
         review: {
           diffStyle: "split" as ReviewDiffStyle,
-          panelOpened: DEFAULT_REVIEW_PANEL_OPENED,
         },
         fileTree: {
           opened: false,
@@ -669,7 +656,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         diffStyle: createMemo(() => store.review?.diffStyle ?? "split"),
         setDiffStyle(diffStyle: ReviewDiffStyle) {
           if (!store.review) {
-            setStore("review", { diffStyle, panelOpened: DEFAULT_REVIEW_PANEL_OPENED })
+            setStore("review", { diffStyle })
             return
           }
           setStore("review", "diffStyle", diffStyle)
@@ -799,7 +786,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         const key = createSessionKeyReader(sessionKey, ensureKey)
         const s = createMemo(() => store.sessionView[key()] ?? { scroll: {} })
         const terminalOpened = createMemo(() => store.terminal?.opened ?? false)
-        const reviewPanelOpened = createMemo(() => store.review?.panelOpened ?? DEFAULT_REVIEW_PANEL_OPENED)
+        const reviewPanelOpened = createMemo(() => s().reviewPanelOpened ?? DEFAULT_REVIEW_PANEL_OPENED)
         const reviewPanelSource = createMemo(() => (reviewPanelOpened() ? ephemeral.reviewPanelSource : "other"))
 
         function setTerminalOpened(next: boolean) {
@@ -816,22 +803,19 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
         function setReviewPanelOpened(next: boolean, source: ReviewPanelSource) {
           const nextSource = next ? source : "other"
-          const current = store.review
-          if (!current) {
-            batch(() => {
-              setStore("review", { diffStyle: "split" as ReviewDiffStyle, panelOpened: next })
-              setEphemeral("reviewPanelSource", nextSource)
-            })
-            return
-          }
-
-          const value = current.panelOpened ?? DEFAULT_REVIEW_PANEL_OPENED
+          const session = key()
+          const value = store.sessionView[session]?.reviewPanelOpened ?? DEFAULT_REVIEW_PANEL_OPENED
           if (value === next) {
             if (ephemeral.reviewPanelSource !== nextSource) setEphemeral("reviewPanelSource", nextSource)
             return
           }
           batch(() => {
-            setStore("review", "panelOpened", next)
+            const current = store.sessionView[session]
+            if (!current) {
+              setStore("sessionView", session, { scroll: {}, reviewPanelOpened: next })
+            } else {
+              setStore("sessionView", session, "reviewPanelOpened", next)
+            }
             setEphemeral("reviewPanelSource", nextSource)
           })
         }
