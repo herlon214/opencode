@@ -74,7 +74,6 @@ import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { sessionTitle } from "@/utils/session-title"
-import { displayName } from "@/pages/layout/helpers"
 import { scheduleConnectedMeasure } from "./measure"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
@@ -335,11 +334,6 @@ export function MessageTimeline(props: {
     if (value) return value
     return language.t("command.session.new")
   })
-  const projectName = createMemo(() => {
-    const session = info()
-    if (!session) return
-    return displayName({ worktree: session.directory, name: sync().project?.name })
-  })
   const showHeader = createMemo(() => props.showHeader !== false && !!(titleValue() || parentID()))
   const projection = createTimelineProjection({
     messages: sessionMessages,
@@ -449,7 +443,7 @@ export function MessageTimeline(props: {
     followOnAppend: true,
     scrollEndThreshold: 80,
     get scrollMargin() {
-      return showHeader() ? 80 : 0
+      return showHeader() ? 64 : 0
     },
     overscan: 50,
     paddingEnd: 64,
@@ -1457,7 +1451,7 @@ export function MessageTimeline(props: {
         data-timeline-key={props.rowKey}
         style={{
           position: "absolute",
-          top: `${item().start - (showHeader() ? 80 : 0)}px`,
+          top: `${item().start - (showHeader() ? 64 : 0)}px`,
           left: "0",
           width: "100%",
           height: `${item().size}px`,
@@ -1550,7 +1544,7 @@ export function MessageTimeline(props: {
         onClick={props.onAutoScrollInteraction}
         class="relative min-w-0 w-full h-full"
         style={{
-          "--sticky-accordion-top": showHeader() ? "64px" : "0px",
+          "--sticky-accordion-top": showHeader() ? "48px" : "0px",
         }}
       >
         <Show when={showHeader()}>
@@ -1558,9 +1552,9 @@ export function MessageTimeline(props: {
             data-session-title
             classList={{
               "sticky top-0 z-30": true,
-              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_64px,transparent)]":
+              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_48px,transparent)]":
                 settings.general.newLayoutDesigns(),
-              "bg-[linear-gradient(to_bottom,var(--background-stronger)_64px,transparent)]":
+              "bg-[linear-gradient(to_bottom,var(--background-stronger)_48px,transparent)]":
                 !settings.general.newLayoutDesigns(),
               "w-full": true,
               "pb-4": true,
@@ -1570,15 +1564,14 @@ export function MessageTimeline(props: {
               "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered && !settings.general.newLayoutDesigns(),
             }}
           >
-            <div class="min-h-12 w-full flex items-center justify-between gap-2">
+            <div class="h-12 w-full flex items-center justify-between gap-2">
               <div
                 classList={{
-                  "flex flex-col justify-center min-w-0 flex-1": true,
-                  "gap-0.5": settings.general.newLayoutDesigns(),
+                  "flex items-center gap-1 min-w-0 flex-1": true,
                   "pr-3": !settings.general.newLayoutDesigns(),
                 }}
               >
-                <div class="flex items-center min-w-0 w-full">
+                <div class="flex items-center min-w-0 flex-1 w-full">
                   <Show when={parentID()}>
                     <button
                       type="button"
@@ -1650,16 +1643,6 @@ export function MessageTimeline(props: {
                     </Show>
                   </Show>
                 </div>
-                <Show when={projectName()}>
-                  {(name) => (
-                    <div
-                      class="truncate text-11-regular text-text-weaker leading-tight pl-2"
-                      data-slot="session-title-project"
-                    >
-                      {name()}
-                    </div>
-                  )}
-                </Show>
               </div>
               <Show when={sessionID()} keyed>
                 {(id) => (
