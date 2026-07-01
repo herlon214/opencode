@@ -1135,68 +1135,91 @@ export function MessageTimeline(props: {
       () => `${groupCount()} ${language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}`,
     )
     const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
+    const canExpand = createMemo(() => active() || groupCount() > 1)
+    const title = (showSummary: boolean) => (
+      <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
+        <Show when={active()}>
+          <span data-slot="in-progress-group-spinner">
+            <Spinner class="size-4" />
+          </span>
+        </Show>
+        <span data-slot="in-progress-group-label" class="shrink-0">
+          {label()}
+        </span>
+        <Show when={showSummary}>
+          <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
+            ·
+          </span>
+          <span
+            data-slot="in-progress-group-summary"
+            class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-normal text-text-base"
+          >
+            {stepCount()}
+            <Show when={heading()}>
+              {(text) => (
+                <>
+                  <span class="mx-2 font-normal text-text-weak" aria-hidden="true">
+                    ·
+                  </span>
+                  {text()}
+                  <Show when={active()}>
+                    <AnimatedEllipsis />
+                  </Show>
+                </>
+              )}
+            </Show>
+          </span>
+        </Show>
+      </span>
+    )
 
     return (
-      <Collapsible
-        open={open()}
-        onOpenChange={setOpen}
-        variant="ghost"
-        class="in-progress-collapsible rounded-none pb-2"
-        classList={{ "border-b border-border-weak-base": !active() }}
-        data-timeline-part-ids={props
-          .row()
-          .groups.map((item) => item.group.key)
-          .join(",")}
+      <Show
+        when={canExpand()}
+        fallback={
+          <div
+            class="in-progress-collapsible min-w-0 w-full rounded-none pb-2 border-b border-border-weak-base"
+            data-timeline-part-ids={props
+              .row()
+              .groups.map((item) => item.group.key)
+              .join(",")}
+          >
+            <div data-component="in-progress-group-trigger">
+              {title(false)}
+            </div>
+          </div>
+        }
       >
-        <Collapsible.Trigger>
-          <div data-component="in-progress-group-trigger">
-            <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
-              <Show when={active()}>
-                <span data-slot="in-progress-group-spinner">
-                  <Spinner class="size-4" />
-                </span>
-              </Show>
-              <span data-slot="in-progress-group-label" class="shrink-0">
-                {label()}
-              </span>
-              <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
-                ·
-              </span>
-              <span
-                data-slot="in-progress-group-summary"
-                class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-normal text-text-base"
-              >
-                {stepCount()}
-                <Show when={heading()}>
-                  {(text) => (
-                    <>
-                      <span class="mx-2 font-normal text-text-weak" aria-hidden="true">
-                        ·
-                      </span>
-                      {text()}
-                      <Show when={active()}>
-                        <AnimatedEllipsis />
-                      </Show>
-                    </>
-                  )}
-                </Show>
-              </span>
-            </span>
-            <Collapsible.Arrow />
-          </div>
-        </Collapsible.Trigger>
-        <Collapsible.Content>
-          <div data-component="in-progress-group-list">
-            <Index each={props.row().groups}>
-              {(groupAccessor) => (
-                <Show when={groupAccessor().group}>
-                  {(group) => renderPartGroup(group, () => props.row().userMessageID, props.onSizeChange)}
-                </Show>
-              )}
-            </Index>
-          </div>
-        </Collapsible.Content>
-      </Collapsible>
+        <Collapsible
+          open={open()}
+          onOpenChange={setOpen}
+          variant="ghost"
+          class="in-progress-collapsible rounded-none pb-2"
+          classList={{ "border-b border-border-weak-base": !active() }}
+          data-timeline-part-ids={props
+            .row()
+            .groups.map((item) => item.group.key)
+            .join(",")}
+        >
+          <Collapsible.Trigger>
+            <div data-component="in-progress-group-trigger">
+              {title(true)}
+              <Collapsible.Arrow />
+            </div>
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <div data-component="in-progress-group-list">
+              <Index each={props.row().groups}>
+                {(groupAccessor) => (
+                  <Show when={groupAccessor().group}>
+                    {(group) => renderPartGroup(group, () => props.row().userMessageID, props.onSizeChange)}
+                  </Show>
+                )}
+              </Index>
+            </div>
+          </Collapsible.Content>
+        </Collapsible>
+      </Show>
     )
   }
 
