@@ -40,6 +40,34 @@ describe("estimateSessionContextBreakdown", () => {
     expect(map.other).toBe(8)
   })
 
+  test("separates loaded skill output from other tool output", () => {
+    const messages = [assistant("a1")]
+    const parts = {
+      a1: [
+        {
+          type: "tool",
+          tool: "skill",
+          state: { status: "completed", input: { name: "go" }, output: "x".repeat(80) },
+        },
+        {
+          type: "tool",
+          tool: "bash",
+          state: { status: "completed", input: { command: "pwd" }, output: "ok" },
+        },
+      ] as unknown as Part[],
+    }
+
+    const output = estimateSessionContextBreakdown({
+      messages,
+      parts,
+      input: 50,
+    })
+
+    const map = Object.fromEntries(output.map((segment) => [segment.key, segment.tokens]))
+    expect(map.skill).toBe(24)
+    expect(map.tool).toBe(5)
+  })
+
   test("scales segments when estimates exceed input", () => {
     const messages = [user("u1"), assistant("a1")]
     const parts = {

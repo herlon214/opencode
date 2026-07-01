@@ -24,6 +24,7 @@ const BREAKDOWN_COLOR: Record<SessionContextBreakdownKey, string> = {
   user: "var(--syntax-success)",
   assistant: "var(--syntax-property)",
   tool: "var(--syntax-warning)",
+  skill: "var(--syntax-string)",
   other: "var(--syntax-comment)",
 }
 
@@ -195,6 +196,7 @@ export function SessionContextTab() {
     if (key === "user") return language.t("context.breakdown.user")
     if (key === "assistant") return language.t("context.breakdown.assistant")
     if (key === "tool") return language.t("context.breakdown.tool")
+    if (key === "skill") return language.t("context.breakdown.skill")
     return language.t("context.breakdown.other")
   }
 

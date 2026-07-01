@@ -1,6 +1,6 @@
 import type { Message, Part } from "@opencode-ai/sdk/v2/client"
 
-export type SessionContextBreakdownKey = "system" | "user" | "assistant" | "tool" | "other"
+export type SessionContextBreakdownKey = "system" | "user" | "assistant" | "tool" | "skill" | "other"
 
 export type SessionContextBreakdownSegment = {
   key: SessionContextBreakdownKey
@@ -21,19 +21,23 @@ const charsFromUserPart = (part: Part) => {
 }
 
 const charsFromAssistantPart = (part: Part) => {
-  if (part.type === "text") return { assistant: part.text.length, tool: 0 }
-  if (part.type === "reasoning") return { assistant: part.text.length, tool: 0 }
-  if (part.type !== "tool") return { assistant: 0, tool: 0 }
+  if (part.type === "text") return { assistant: part.text.length, tool: 0, skill: 0 }
+  if (part.type === "reasoning") return { assistant: part.text.length, tool: 0, skill: 0 }
+  if (part.type !== "tool") return { assistant: 0, tool: 0, skill: 0 }
 
   const input = Object.keys(part.state.input).length * 16
-  if (part.state.status === "pending") return { assistant: 0, tool: input + part.state.raw.length }
-  if (part.state.status === "completed") return { assistant: 0, tool: input + part.state.output.length }
-  if (part.state.status === "error") return { assistant: 0, tool: input + part.state.error.length }
-  return { assistant: 0, tool: input }
+  const output = (() => {
+    if (part.state.status === "pending") return part.state.raw.length
+    if (part.state.status === "completed") return part.state.output.length
+    if (part.state.status === "error") return part.state.error.length
+    return 0
+  })()
+  if (part.tool === "skill") return { assistant: 0, tool: 0, skill: input + output }
+  return { assistant: 0, tool: input + output, skill: 0 }
 }
 
 const build = (
-  tokens: { system: number; user: number; assistant: number; tool: number; other: number },
+  tokens: { system: number; user: number; assistant: number; tool: number; skill: number; other: number },
   input: number,
 ) => {
   return [
@@ -52,6 +56,10 @@ const build = (
     {
       key: "tool",
       tokens: tokens.tool,
+    },
+    {
+      key: "skill",
+      tokens: tokens.skill,
     },
     {
       key: "other",
@@ -90,14 +98,16 @@ export function estimateSessionContextBreakdown(args: {
           return {
             assistant: sum.assistant + next.assistant,
             tool: sum.tool + next.tool,
+            skill: sum.skill + next.skill,
           }
         },
-        { assistant: 0, tool: 0 },
+        { assistant: 0, tool: 0, skill: 0 },
       )
       return {
         ...acc,
         assistant: acc.assistant + assistant.assistant,
         tool: acc.tool + assistant.tool,
+        skill: acc.skill + assistant.skill,
       }
     },
     {
@@ -105,6 +115,7 @@ export function estimateSessionContextBreakdown(args: {
       user: 0,
       assistant: 0,
       tool: 0,
+      skill: 0,
     },
   )
 
@@ -113,8 +124,9 @@ export function estimateSessionContextBreakdown(args: {
     user: estimateTokens(counts.user),
     assistant: estimateTokens(counts.assistant),
     tool: estimateTokens(counts.tool),
+    skill: estimateTokens(counts.skill),
   }
-  const estimated = tokens.system + tokens.user + tokens.assistant + tokens.tool
+  const estimated = tokens.system + tokens.user + tokens.assistant + tokens.tool + tokens.skill
 
   if (estimated <= args.input) {
     return build({ ...tokens, other: args.input - estimated }, args.input)
@@ -126,7 +138,8 @@ export function estimateSessionContextBreakdown(args: {
     user: Math.floor(tokens.user * scale),
     assistant: Math.floor(tokens.assistant * scale),
     tool: Math.floor(tokens.tool * scale),
+    skill: Math.floor(tokens.skill * scale),
   }
-  const total = scaled.system + scaled.user + scaled.assistant + scaled.tool
+  const total = scaled.system + scaled.user + scaled.assistant + scaled.tool + scaled.skill
   return build({ ...scaled, other: Math.max(0, args.input - total) }, args.input)
 }
