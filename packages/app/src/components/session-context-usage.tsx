@@ -19,6 +19,8 @@ interface SessionContextUsageProps {
   variant?: "button" | "indicator"
   buttonAppearance?: "default" | "v2"
   placement?: ComponentProps<typeof TooltipV2>["placement"]
+  class?: string
+  "data-action"?: string
 }
 
 function ContextTooltipRow(props: { name: JSX.Element; value: JSX.Element }) {
@@ -143,6 +145,8 @@ export function SessionContextUsage(props: SessionContextUsageProps) {
               variant="ghost-muted"
               size="large"
               icon={circleV2()}
+              data-action={props["data-action"]}
+              class={props.class}
               onClick={openContext}
               aria-label={language.t("context.usage.view")}
             />
@@ -151,7 +155,8 @@ export function SessionContextUsage(props: SessionContextUsageProps) {
             <Button
               type="button"
               variant="ghost"
-              class="size-6"
+              data-action={props["data-action"]}
+              class={props.class ? `size-6 ${props.class}` : "size-6"}
               onClick={openContext}
               aria-label={language.t("context.usage.view")}
             >

@@ -74,6 +74,7 @@ import { promptText } from "./prompt-input/quote-replies"
 import { showToast } from "@/utils/toast"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
 import type { ReferenceInfo } from "@opencode-ai/sdk/v2/client"
+import { SessionContextUsage } from "@/components/session-context-usage"
 
 export type PromptInputState = ReturnType<typeof usePrompt>
 
@@ -1738,6 +1739,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     </div>
                   </Show>
                 </div>
+                <SessionContextUsage
+                  data-action="prompt-context-usage"
+                  placement="top"
+                  buttonAppearance="v2"
+                  class="mr-1"
+                />
                 <TooltipV2 placement="top" inactive={!working() && blank()} value={tip()}>
                   <IconButton
                     data-action="prompt-submit"
@@ -1806,7 +1813,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               onMouseDown={(e) => {
                 const target = e.target
                 if (!(target instanceof HTMLElement)) return
-                if (target.closest('[data-action="prompt-attach"], [data-action="prompt-submit"]')) {
+                if (
+                  target.closest(
+                    '[data-action="prompt-attach"], [data-action="prompt-context-usage"], [data-action="prompt-submit"]',
+                  )
+                ) {
                   return
                 }
                 editorRef?.focus()
@@ -1880,6 +1891,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 />
 
                 <div class="flex items-center gap-1 pointer-events-auto">
+                  <SessionContextUsage data-action="prompt-context-usage" />
                   <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
                     <IconButton
                       data-action="prompt-submit"
