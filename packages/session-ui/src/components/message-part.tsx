@@ -1678,13 +1678,11 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
     <Show when={text()}>
       <div data-component="reasoning-part" data-timeline-part-id={part().id}>
         <div data-slot="reasoning-part-header">
-          <Show when={!isDone()}>
-            <span data-slot="reasoning-part-spinner">
-              <Spinner />
-            </span>
-          </Show>
           <span data-slot="reasoning-part-title">
-            {isDone() ? i18n.t("ui.sessionTurn.status.thought") : i18n.t("ui.sessionTurn.status.thinking")}
+            <TextShimmer
+              text={isDone() ? i18n.t("ui.sessionTurn.status.thought") : i18n.t("ui.sessionTurn.status.thinking")}
+              active={!isDone()}
+            />
             <Show when={heading()}>
               <span data-slot="reasoning-part-heading">: {heading()}</span>
             </Show>
