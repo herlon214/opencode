@@ -109,6 +109,14 @@ const names = [
   "link",
   "providers",
   "models",
+  "glob",
+  "grep",
+  "websearch",
+  "webfetch",
+  "pencil",
+  "file-plus",
+  "files",
+  "bolt",
 ]
 
 const story = create({ title: "UI/Icon", mod, args: { name: "check" } })

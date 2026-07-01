@@ -471,25 +471,25 @@ export function getToolInfo(
       }
     case "glob":
       return {
-        icon: "magnifying-glass-menu",
+        icon: "glob",
         title: i18n.t("ui.tool.glob"),
         subtitle: input.pattern,
       }
     case "grep":
       return {
-        icon: "magnifying-glass-menu",
+        icon: "grep",
         title: i18n.t("ui.tool.grep"),
         subtitle: input.pattern,
       }
     case "webfetch":
       return {
-        icon: "window-cursor",
+        icon: "webfetch",
         title: i18n.t("ui.tool.webfetch"),
         subtitle: input.url,
       }
     case "websearch":
       return {
-        icon: "window-cursor",
+        icon: "websearch",
         title: webSearchProviderLabel(metadata?.provider),
         subtitle: input.query,
       }
@@ -512,19 +512,19 @@ export function getToolInfo(
       }
     case "edit":
       return {
-        icon: "code-lines",
+        icon: "pencil",
         title: i18n.t("ui.messagePart.title.edit"),
         subtitle: input.filePath ? getFilename(input.filePath) : undefined,
       }
     case "write":
       return {
-        icon: "code-lines",
+        icon: "file-plus",
         title: i18n.t("ui.messagePart.title.write"),
         subtitle: input.filePath ? getFilename(input.filePath) : undefined,
       }
     case "apply_patch":
       return {
-        icon: "code-lines",
+        icon: "files",
         title: i18n.t("ui.tool.patch"),
         subtitle: input.files?.length
           ? `${input.files.length} ${i18n.t(input.files.length > 1 ? "ui.common.file.other" : "ui.common.file.one")}`
@@ -542,7 +542,7 @@ export function getToolInfo(
       }
     case "skill":
       return {
-        icon: "brain",
+        icon: "bolt",
         title: input.name || i18n.t("ui.tool.skill"),
       }
     default:
@@ -1834,7 +1834,7 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
-        icon="magnifying-glass-menu"
+        icon="glob"
         trigger={{
           title: i18n.t("ui.tool.glob"),
           subtitle: getDirectory(props.input.path || "/"),
@@ -1861,7 +1861,7 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
-        icon="magnifying-glass-menu"
+        icon="grep"
         trigger={{
           title: i18n.t("ui.tool.grep"),
           subtitle: getDirectory(props.input.path || "/"),
@@ -1892,7 +1892,7 @@ ToolRegistry.register({
       <BasicTool
         {...props}
         hideDetails
-        icon="window-cursor"
+        icon="webfetch"
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
@@ -1937,7 +1937,7 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
-        icon="window-cursor"
+        icon="websearch"
         trigger={{
           title: title(),
           subtitle: query(),
@@ -2155,7 +2155,7 @@ ToolRegistry.register({
       <div data-component="edit-tool">
         <BasicTool
           {...props}
-          icon="code-lines"
+          icon="pencil"
           defer={props.deferContent !== false}
           trigger={
             <div data-component="edit-trigger">
@@ -2222,7 +2222,7 @@ ToolRegistry.register({
       <div data-component="write-tool">
         <BasicTool
           {...props}
-          icon="code-lines"
+          icon="file-plus"
           defer={props.deferContent !== false}
           trigger={
             <div data-component="write-trigger">
@@ -2305,7 +2305,7 @@ ToolRegistry.register({
           <div data-component="apply-patch-tool">
             <BasicTool
               {...props}
-              icon="code-lines"
+              icon="files"
               defer={props.deferContent !== false}
               trigger={{
                 title: i18n.t("ui.tool.patch"),
@@ -2404,7 +2404,7 @@ ToolRegistry.register({
         <div data-component="apply-patch-tool">
           <BasicTool
             {...props}
-            icon="code-lines"
+            icon="files"
             defer={props.deferContent !== false}
             trigger={
               <div data-component="edit-trigger">
@@ -2587,7 +2587,7 @@ ToolRegistry.register({
 
     return (
       <BasicTool
-        icon="checklist"
+        icon="bolt"
         iconClass="tool-icon-weak"
         status={props.status}
         trigger={{ title: title(), titleClass: "tool-title-weak" }}
