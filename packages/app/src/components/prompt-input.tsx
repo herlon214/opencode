@@ -61,7 +61,7 @@ import {
   type PromptHistoryStoredEntry,
   promptLength,
 } from "./prompt-input/history"
-import { createPromptSubmit, type FollowupDraft } from "./prompt-input/submit"
+import { createPromptSubmit, type FollowupDraft, type PromptSubmitOptions } from "./prompt-input/submit"
 import { PromptPopover, type AtOption, type SlashCommand } from "./prompt-input/slash-popover"
 import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
@@ -82,7 +82,7 @@ export type PromptInputHistory = {
 
 export type PromptInputSubmission = {
   abort: () => Promise<void> | void
-  handleSubmit: (event: Event) => Promise<void> | void
+  handleSubmit: (event: Event, options?: PromptSubmitOptions) => Promise<void> | void
 }
 
 export type PromptInputControls = {
@@ -1307,6 +1307,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     })
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    const hasSubmitContent = () =>
+      prompt
+        .current()
+        .map((part) => ("content" in part ? part.content : ""))
+        .join("")
+        .trim().length > 0 ||
+      imageAttachments().length > 0 ||
+      commentCount() > 0
+
     if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "u") {
       event.preventDefault()
       if (store.mode !== "normal") return
@@ -1383,13 +1392,21 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Handle Shift+Enter BEFORE IME check - Shift+Enter is never used for IME input
     // and should always insert a newline regardless of composition state
-    if (event.key === "Enter" && event.shiftKey) {
+    if (event.key === "Enter" && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
       addPart({ type: "text", content: "\n", start: 0, end: 0 })
       event.preventDefault()
       return
     }
 
     if (event.key === "Enter" && isImeComposing(event)) {
+      return
+    }
+
+    if (event.key === "Enter" && event.shiftKey && !event.altKey && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      if (event.repeat) return
+      if (working() && !hasSubmitContent()) return
+      void handleSubmit(event, { queue: true })
       return
     }
 
@@ -1455,16 +1472,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
       if (event.repeat) return
-      if (
-        working() &&
-        prompt
-          .current()
-          .map((part) => ("content" in part ? part.content : ""))
-          .join("")
-          .trim().length === 0 &&
-        imageAttachments().length === 0 &&
-        commentCount() === 0
-      ) {
+      if (working() && !hasSubmitContent()) {
         return
       }
       void handleSubmit(event)

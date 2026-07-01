@@ -194,6 +194,10 @@ type PromptSubmitInput = {
   onSubmit?: () => void
 }
 
+export type PromptSubmitOptions = {
+  readonly queue?: boolean
+}
+
 export function createPromptSubmit(input: PromptSubmitInput) {
   const navigate = useNavigate()
   const sdk = useSDK()
@@ -279,7 +283,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     })
   }
 
-  const handleSubmit = async (event: Event) => {
+  const handleSubmit = async (event: Event, options?: PromptSubmitOptions) => {
     event.preventDefault()
 
     const target = prompt.capture()
@@ -430,7 +434,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return true
     }
 
-    if (!isNewSession && mode === "normal" && input.shouldQueue?.()) {
+    if (!isNewSession && mode === "normal" && (input.shouldQueue?.() || (options?.queue && input.working()))) {
       input.onQueue?.(draft)
       clearContext(submission.target())
       clearInput()
