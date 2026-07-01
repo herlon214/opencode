@@ -125,6 +125,69 @@
     margin-top: 8px;
   }
 
+  [data-slot="user-message-quote-replies"] {
+    width: fit-content;
+    max-width: min(82%, 64ch);
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  [data-slot="user-message-attachments"] + [data-slot="user-message-quote-replies"] {
+    margin-top: 8px;
+  }
+
+  [data-slot="user-message-quote-replies"] + [data-slot="user-message-body"] {
+    margin-top: 6px;
+  }
+
+  [data-slot="user-message-quote-reply"] {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 0.5px solid color-mix(in srgb, var(--v2-border-border-base) 58%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--v2-background-bg-layer-02) 70%, transparent);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--v2-background-bg-base) 72%, transparent);
+  }
+
+  [data-slot="user-message-quote-reply-heading"] {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+    color: var(--v2-text-text-muted);
+    font-size: 11px;
+    font-weight: 560;
+    line-height: 1.2;
+  }
+
+  [data-slot="user-message-quote-reply-heading"] [data-component="icon"] {
+    color: var(--v2-icon-icon-muted);
+  }
+
+  [data-slot="user-message-quote-reply-quote"] {
+    display: -webkit-box;
+    margin-bottom: 6px;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--v2-text-text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-large);
+    white-space: pre-wrap;
+  }
+
+  [data-slot="user-message-quote-reply-answer"] {
+    color: var(--v2-text-text-base);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-large);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   [data-slot="user-message-text"] {
     display: inline-block;
     white-space: pre-wrap;
@@ -784,6 +847,7 @@
 }
 
 [data-component="user-message"] [data-slot="user-message-text"],
+[data-component="user-message"] [data-slot="user-message-quote-reply"],
 [data-component="text-part"],
 [data-component="reasoning-part"],
 [data-component="tool-output"],
@@ -1429,6 +1493,22 @@ body:not([data-new-layout]) {
       background: var(--surface-base);
       border: 1px solid var(--border-weak-base);
       border-radius: 6px;
+    }
+
+    [data-slot="user-message-quote-reply"] {
+      background: var(--surface-base);
+      border: 1px solid var(--border-weak-base);
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    [data-slot="user-message-quote-reply-heading"],
+    [data-slot="user-message-quote-reply-quote"] {
+      color: var(--text-weak);
+    }
+
+    [data-slot="user-message-quote-reply-answer"] {
+      color: var(--text-strong);
     }
 
     .text-text-strong {

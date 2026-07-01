@@ -2,7 +2,7 @@ import { getFilename } from "@opencode-ai/core/util/path"
 import { type AgentPartInput, type FilePartInput, type Part, type TextPartInput } from "@opencode-ai/sdk/v2/client"
 import type { FileSelection } from "@/context/file"
 import { encodeFilePath } from "@/context/file/path"
-import type { AgentPart, FileAttachmentPart, ImageAttachmentPart, Prompt } from "@/context/prompt"
+import type { AgentPart, FileAttachmentPart, ImageAttachmentPart, Prompt, QuoteReplyPart } from "@/context/prompt"
 import { Identifier } from "@/utils/id"
 import { createCommentMetadata, formatCommentNote } from "@/utils/comment-note"
 
@@ -29,6 +29,13 @@ type BuildRequestPartsInput = {
   sessionDirectory: string
 }
 
+type QuoteReplyMetadata = {
+  quoteReplies: {
+    text: string
+    replies: { quote: string; reply: string }[]
+  }
+}
+
 const absolute = (directory: string, path: string) => {
   if (path.startsWith("/")) return path
   if (/^[A-Za-z]:[\\/]/.test(path) || /^[A-Za-z]:$/.test(path)) return path
@@ -51,6 +58,22 @@ const parseCommentMentions = (comment: string) => {
 
 const isFileAttachment = (part: Prompt[number]): part is FileAttachmentPart => part.type === "file"
 const isAgentAttachment = (part: Prompt[number]): part is AgentPart => part.type === "agent"
+const isQuoteReply = (part: Prompt[number]): part is QuoteReplyPart => part.type === "quote-reply"
+
+function quoteReplyMetadata(prompt: Prompt): QuoteReplyMetadata | undefined {
+  const replies = prompt.filter(isQuoteReply)
+  if (replies.length === 0) return
+
+  return {
+    quoteReplies: {
+      text: prompt
+        .map((part) => ("content" in part ? part.content : ""))
+        .join("")
+        .trimEnd(),
+      replies: replies.map((part) => ({ quote: part.quote, reply: part.reply })),
+    },
+  }
+}
 
 const toOptimisticPart = (part: PromptRequestPart, sessionID: string, messageID: string): Part => {
   if (part.type === "text") {
@@ -89,11 +112,13 @@ const toOptimisticPart = (part: PromptRequestPart, sessionID: string, messageID:
 }
 
 export function buildRequestParts(input: BuildRequestPartsInput) {
+  const metadata = quoteReplyMetadata(input.prompt)
   const requestParts: PromptRequestPart[] = [
     {
       id: Identifier.ascending("part"),
       type: "text",
       text: input.text,
+      ...(metadata ? { metadata } : {}),
     },
   ]
 

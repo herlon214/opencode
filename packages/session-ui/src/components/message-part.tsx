@@ -130,6 +130,43 @@ interface Diagnostic {
   severity?: number
 }
 
+type UserQuoteReply = {
+  quote: string
+  reply: string
+}
+
+type UserQuoteReplyDisplay = {
+  text: string
+  replies: UserQuoteReply[]
+}
+
+const emptyUserQuoteReplies: UserQuoteReply[] = []
+
+function isUserQuoteReply(value: unknown): value is UserQuoteReply {
+  if (!value || typeof value !== "object") return false
+  const item = value as Record<string, unknown>
+  return typeof item.quote === "string" && typeof item.reply === "string"
+}
+
+function userQuoteReplyDisplay(part: TextPart | undefined): UserQuoteReplyDisplay {
+  const rawText = part?.text ?? ""
+  const value = part?.metadata?.quoteReplies
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { text: rawText, replies: emptyUserQuoteReplies }
+  }
+
+  const metadata = value as Record<string, unknown>
+  if (!Array.isArray(metadata.replies)) return { text: rawText, replies: emptyUserQuoteReplies }
+
+  const replies = metadata.replies.filter(isUserQuoteReply)
+  if (replies.length === 0) return { text: rawText, replies: emptyUserQuoteReplies }
+
+  return {
+    text: typeof metadata.text === "string" ? metadata.text : rawText,
+    replies,
+  }
+}
+
 function getDiagnostics(
   diagnosticsByFile: Record<string, Diagnostic[]> | undefined,
   filePath: string | undefined,
@@ -1137,6 +1174,9 @@ export function UserMessageDisplay(props: {
   )
 
   const text = createMemo(() => textPart()?.text || "")
+  const quoteReplyDisplay = createMemo(() => userQuoteReplyDisplay(textPart()))
+  const displayText = createMemo(() => quoteReplyDisplay().text)
+  const quoteReplies = createMemo(() => quoteReplyDisplay().replies)
 
   const files = createMemo(() => (props.parts?.filter((p) => p.type === "file") as FilePart[]) ?? [])
 
@@ -1232,13 +1272,31 @@ export function UserMessageDisplay(props: {
           </For>
         </div>
       </Show>
-      <Show when={text()}>
+      <Show when={quoteReplies().length > 0}>
+        <div data-slot="user-message-quote-replies">
+          <For each={quoteReplies()}>
+            {(reply) => (
+              <div data-slot="user-message-quote-reply">
+                <div data-slot="user-message-quote-reply-heading">
+                  <Icon name="comment" size="small" />
+                  <span>{i18n.t("ui.message.quoteReply")}</span>
+                </div>
+                <div data-slot="user-message-quote-reply-quote">{reply.quote}</div>
+                <div data-slot="user-message-quote-reply-answer">{reply.reply}</div>
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+      <Show when={text() || quoteReplies().length > 0}>
         <>
-          <div data-slot="user-message-body">
-            <div data-slot="user-message-text">
-              <HighlightedText text={text()} references={inlineFiles()} agents={agents()} />
+          <Show when={displayText()}>
+            <div data-slot="user-message-body">
+              <div data-slot="user-message-text">
+                <HighlightedText text={displayText()} references={inlineFiles()} agents={agents()} />
+              </div>
             </div>
-          </div>
+          </Show>
           <div data-slot="user-message-copy-wrapper">
             <Show when={metaHead() || metaTail()}>
               <span data-slot="user-message-meta-wrap">

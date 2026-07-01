@@ -75,6 +75,46 @@ describe("buildRequestParts", () => {
     expect(files.map((part) => (part.type === "file" ? part.filename : ""))).toEqual(["a.png", "b.pdf"])
   })
 
+  test("preserves quote replies as display metadata without changing raw text", () => {
+    const visibleText = "CREATE TABLE data_editions (...);\n\n---\nDone"
+    const rawText = `${visibleText}\n\n> Useful optional fields:\n\nI'm not adding them.`
+    const metadata = {
+      text: visibleText,
+      replies: [{ quote: "Useful optional fields:", reply: "I'm not adding them." }],
+    }
+
+    const result = buildRequestParts({
+      prompt: [
+        { type: "text", content: visibleText, start: 0, end: visibleText.length },
+        {
+          type: "quote-reply",
+          id: "part_quote_1",
+          quote: "Useful optional fields:",
+          reply: "I'm not adding them.",
+        },
+      ],
+      context: [],
+      images: [],
+      text: rawText,
+      messageID: "msg_quote_reply",
+      sessionID: "ses_quote_reply",
+      sessionDirectory: "/repo",
+    })
+
+    const textPart = result.requestParts[0]
+    expect(textPart?.type).toBe("text")
+    if (textPart?.type === "text") {
+      expect(textPart.text).toBe(rawText)
+      expect(textPart.metadata?.quoteReplies).toEqual(metadata)
+    }
+
+    const optimisticTextPart = result.optimisticParts[0]
+    expect(optimisticTextPart?.type).toBe("text")
+    if (optimisticTextPart?.type === "text") {
+      expect(optimisticTextPart.metadata?.quoteReplies).toEqual(metadata)
+    }
+  })
+
   test("preserves an external attachment source path for the model", () => {
     const result = buildRequestParts({
       prompt: [],
