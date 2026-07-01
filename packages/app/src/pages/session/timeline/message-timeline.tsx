@@ -248,6 +248,9 @@ function TimelineDiffView(props: { diff: SummaryDiff }) {
 }
 
 export function MessageTimeline(props: {
+  sessionID?: Accessor<string | undefined>
+  sessionKey?: Accessor<string>
+  showHeader?: boolean
   actions?: UserActions
   scroll: { overflow: boolean; bottom: boolean; jump: boolean }
   onResumeScroll: () => void
@@ -278,15 +281,16 @@ export function MessageTimeline(props: {
   const tabs = useTabs()
   const dialog = useDialog()
   const language = useLanguage()
-  const { params, sessionKey } = useSessionKey()
-  const ownerSessionKey = sessionKey()
+  const { params, sessionKey: routeSessionKey } = useSessionKey()
+  const timelineSessionKey = () => props.sessionKey?.() ?? routeSessionKey()
+  const ownerSessionKey = timelineSessionKey()
   const cached = timelineCache.get(ownerSessionKey)
   const initialMeasurements = cached?.measurements
   const coldBottomMount = !initialMeasurements?.length && props.shouldAnchorBottom()
   const platform = usePlatform()
 
   const [listRoot, setListRoot] = createSignal<HTMLDivElement>()
-  const sessionID = createMemo(() => params.id)
+  const sessionID = createMemo(() => props.sessionID?.() ?? params.id)
   const sessionStatus = createMemo(() => {
     const id = sessionID()
     if (!id) return idle
@@ -331,7 +335,7 @@ export function MessageTimeline(props: {
     if (value) return value
     return language.t("command.session.new")
   })
-  const showHeader = createMemo(() => !!(titleValue() || parentID()))
+  const showHeader = createMemo(() => props.showHeader !== false && !!(titleValue() || parentID()))
   const projection = createTimelineProjection({
     messages: sessionMessages,
     userMessages: () => props.userMessages,
@@ -509,7 +513,7 @@ export function MessageTimeline(props: {
   let bottomAnchorFrame: number | undefined
 
   const maybeAnchorBottom = () => {
-    const key = sessionKey()
+    const key = timelineSessionKey()
     if (bottomAnchorSessionKey === key) return
     if (timelineRows().length === 0) return
     bottomAnchorSessionKey = key
@@ -520,14 +524,14 @@ export function MessageTimeline(props: {
     if (prependAnchorFrame !== undefined) cancelAnimationFrame(prependAnchorFrame)
     bottomAnchorFrame = requestAnimationFrame(() => {
       bottomAnchorFrame = undefined
-      if (sessionKey() !== key) return
+      if (timelineSessionKey() !== key) return
       virtualizer.scrollToEnd()
     })
   }
 
-  let measuredSessionKey = sessionKey()
+  let measuredSessionKey = timelineSessionKey()
   createEffect(() => {
-    const key = sessionKey()
+    const key = timelineSessionKey()
     timelineRows().length
     if (measuredSessionKey !== key) {
       measuredSessionKey = key
@@ -721,7 +725,7 @@ export function MessageTimeline(props: {
 
   createEffect(
     on(
-      sessionKey,
+      timelineSessionKey,
       () =>
         setTitle({
           draft: "",
