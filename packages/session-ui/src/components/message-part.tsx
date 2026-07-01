@@ -2004,7 +2004,12 @@ ToolRegistry.register({
         trigger={(open) => (
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
-              <span data-slot="basic-tool-tool-title">
+              <span data-slot="basic-tool-tool-indicator">
+                <Show when={pending()} fallback={<Icon name="console" size="small" class="tool-icon-weak" />}>
+                  <Spinner />
+                </Show>
+              </span>
+              <span data-slot="basic-tool-tool-title" class="tool-title-weak">
                 <TextShimmer text={i18n.t("ui.tool.shell")} active={pending()} />
               </span>
               <Show when={!pending() && !open() && props.input.command}>
