@@ -114,6 +114,12 @@
   pointer-events: none;
 }
 
+[data-component="project-avatar-v2"][data-warning] [data-slot="project-avatar-unread-dot"] {
+  background: var(--v2-state-fg-warning);
+  box-shadow: 0 0 0 1px var(--v2-avatar-border-gray);
+  animation: var(--animate-pulse);
+}
+
 [data-slot="project-avatar-slot"] {
   display: flex;
   flex-shrink: 0;

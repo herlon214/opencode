@@ -19,11 +19,12 @@ export function useSessionTabAvatarState(
       return !permission.autoResponds(item, directory())
     })
   })
+  const blocked = createMemo(() => active() && hasPermissions())
   const unread = createMemo(() => active() && (hasPermissions() || notification.session.unseenCount(sessionId()) > 0))
   const loading = createMemo(() => {
     if (!active()) return false
     if (hasPermissions()) return false
     return globalSync().session.data.session_working(sessionId())
   })
-  return { unread, loading }
+  return { unread, loading, blocked }
 }

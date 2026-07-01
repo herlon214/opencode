@@ -22,6 +22,7 @@ export function SessionTabAvatar(props: {
       src={getProjectAvatarSource(props.project?.id, props.project?.icon)}
       variant={getProjectAvatarVariant(props.project?.icon?.color)}
       unread={state.unread()}
+      warning={state.blocked()}
     />
   )
   return (
