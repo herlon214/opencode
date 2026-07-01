@@ -1067,8 +1067,10 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
 export function options(input: {
   model: Provider.Model
   sessionID: string
+  parentSessionID?: string
   providerOptions?: Record<string, any>
 }): Record<string, any> {
+  const cacheKey = input.parentSessionID ?? input.sessionID
   const result: Record<string, any> = {}
 
   if (
@@ -1090,7 +1092,7 @@ export function options(input: {
 
   if (input.model.api.npm === "@ai-sdk/azure") {
     result["store"] = false
-    result["promptCacheKey"] = input.sessionID
+    result["promptCacheKey"] = cacheKey
   }
 
   if (input.model.api.npm === "@openrouter/ai-sdk-provider" || input.model.api.npm === "@llmgateway/ai-sdk-provider") {
@@ -1120,7 +1122,7 @@ export function options(input: {
   }
 
   if (input.model.providerID === "openai" || input.providerOptions?.setCacheKey) {
-    result["promptCacheKey"] = input.sessionID
+    result["promptCacheKey"] = cacheKey
   }
 
   if (input.model.api.npm === "@ai-sdk/google" || input.model.api.npm === "@ai-sdk/google-vertex") {
@@ -1199,18 +1201,18 @@ export function options(input: {
     }
 
     if (input.model.providerID.startsWith("opencode")) {
-      result["promptCacheKey"] = input.sessionID
+      result["promptCacheKey"] = cacheKey
       result["include"] = INCLUDE_ENCRYPTED_REASONING
       result["reasoningSummary"] = "auto"
     }
   }
 
   if (input.model.providerID === "venice") {
-    result["promptCacheKey"] = input.sessionID
+    result["promptCacheKey"] = cacheKey
   }
 
   if (input.model.providerID === "openrouter") {
-    result["prompt_cache_key"] = input.sessionID
+    result["prompt_cache_key"] = cacheKey
   }
   if (input.model.api.npm === "@ai-sdk/gateway") {
     result["gateway"] = {
@@ -1267,7 +1269,6 @@ export function providerOptions(model: Provider.Model, options: { [x: string]: a
     const gateway = options.gateway
     const rest = Object.fromEntries(Object.entries(options).filter(([k]) => k !== "gateway"))
     const has = Object.keys(rest).length > 0
-
     const result: Record<string, any> = {}
     if (gateway !== undefined) result.gateway = gateway
 

@@ -307,6 +307,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     )
     const [ephemeral, setEphemeral] = createStore({
       reviewPanelSource: "other" as ReviewPanelSource,
+      sideChat: undefined as { sessionID: string; parentKey: string; width: number } | undefined,
     })
 
     const MAX_SESSION_KEYS = 50
@@ -734,6 +735,21 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
         toggle() {
           setStore("mobileSidebar", "opened", (x) => !x)
+        },
+      },
+      sideChat: {
+        sessionID: createMemo(() => ephemeral.sideChat?.sessionID),
+        parentKey: createMemo(() => ephemeral.sideChat?.parentKey),
+        width: createMemo(() => ephemeral.sideChat?.width ?? 448),
+        open(sessionID: string, parentKey: string) {
+          setEphemeral("sideChat", { sessionID, parentKey, width: ephemeral.sideChat?.width ?? 448 })
+        },
+        close() {
+          setEphemeral("sideChat", undefined)
+        },
+        resize(width: number) {
+          if (!ephemeral.sideChat) return
+          setEphemeral("sideChat", "width", width)
         },
       },
       pendingMessage: {

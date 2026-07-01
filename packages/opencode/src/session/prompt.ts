@@ -1273,7 +1273,9 @@ const layer = Layer.effect(
               agent,
               permission: session.permission,
               sessionID,
-              parentSessionID: session.parentID,
+              parentSessionID:
+                session.parentID ??
+                (typeof session.metadata?.sideParent === "string" ? session.metadata.sideParent : undefined),
               system,
               messages: [
                 ...modelMsgs,

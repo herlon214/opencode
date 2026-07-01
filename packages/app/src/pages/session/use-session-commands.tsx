@@ -394,6 +394,33 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     )
   }
 
+  const side = () => {
+    const parentID = params.id
+    if (!parentID) return
+    void sdk()
+      .client.session.fork({ sessionID: parentID })
+      .then((forked) => {
+        if (!forked.data?.id) {
+          showToast({ title: language.t("common.requestFailed") })
+          return
+        }
+        return sdk()
+          .client.session.update({
+            sessionID: forked.data.id,
+            metadata: {
+              ...(forked.data.metadata ?? {}),
+              side: true,
+              sideParent: parentID,
+            },
+          })
+          .then(() => layout.sideChat.open(forked.data!.id, sessionKey()))
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description: message })
+      })
+  }
+
   const shareCmds = () => {
     if (sync().data.config.share === "disabled") return []
     return [
@@ -472,6 +499,14 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       slash: "fork",
       disabled: !params.id || visibleUserMessages().length === 0,
       onSelect: fork,
+    }),
+    sessionCommand({
+      id: "session.side",
+      title: language.t("command.session.side"),
+      description: language.t("command.session.side.description"),
+      slash: "side",
+      disabled: !params.id || visibleUserMessages().length === 0,
+      onSelect: side,
     }),
   ]
 

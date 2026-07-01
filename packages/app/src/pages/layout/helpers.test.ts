@@ -207,6 +207,32 @@ describe("layout workspace helpers", () => {
     expect(result?.id).toBe("root")
   })
 
+  test("ignores side-chat (ephemeral) sessions when finding latest root session", () => {
+    const result = latestRootSession(
+      [
+        {
+          path: { directory: "/workspace" },
+          session: [
+            session({
+              id: "side",
+              directory: "/workspace",
+              metadata: { side: true },
+              time: { created: 40, updated: 40, archived: undefined },
+            }),
+            session({
+              id: "root",
+              directory: "/workspace",
+              time: { created: 30, updated: 30, archived: undefined },
+            }),
+          ],
+        },
+      ],
+      120_000,
+    )
+
+    expect(result?.id).toBe("root")
+  })
+
   test("finds the direct child on the active session path", () => {
     const list = [
       session({ id: "root", directory: "/workspace" }),

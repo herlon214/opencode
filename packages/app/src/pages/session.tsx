@@ -79,6 +79,7 @@ import { formatServerError } from "@/utils/server-errors"
 import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/session-route"
 import { useUsageExceededDialogs } from "./session/usage-exceeded-dialogs"
 import { createSessionOwnership } from "./session/session-ownership"
+import { SideChatPanel } from "./session/side-chat/side-chat-panel"
 
 type FollowupItem = FollowupDraft & { id: string }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
@@ -218,13 +219,15 @@ export default function Page() {
         opened: layout.fileTree.opened(),
       }),
   )
-  const desktopSidePanelOpen = createMemo(() => desktopReviewOpen() || desktopFileTreeOpen())
+  const desktopSidePanelOpen = createMemo(
+    () => desktopReviewOpen() || desktopFileTreeOpen() || !!layout.sideChat.sessionID(),
+  )
   const sessionPanelWidth = createMemo(() => {
     if (!desktopSidePanelOpen()) return "100%"
-    if (desktopReviewOpen()) return `${layout.session.width()}px`
+    if (desktopReviewOpen() || layout.sideChat.sessionID()) return `${layout.session.width()}px`
     return `calc(100% - ${layout.fileTree.width()}px)`
   })
-  const centered = createMemo(() => isDesktop() && !desktopReviewOpen())
+  const centered = createMemo(() => isDesktop() && !desktopReviewOpen() && !layout.sideChat.sessionID())
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab
@@ -595,9 +598,11 @@ export default function Page() {
   createEffect(
     on(
       sessionKey,
-      () => {
+      (key) => {
         setStore(sessionViewState())
         setUi("pendingMessage", undefined)
+        const side = layout.sideChat
+        if (side.sessionID() && side.parentKey() !== key) side.close()
       },
       { defer: true },
     ),
@@ -1807,7 +1812,7 @@ export default function Page() {
             <Show when={!!params.id && mobileTabsBottom()}>{mobileTabs(true, true)}</Show>
           </div>
 
-          <Show when={desktopReviewOpen()}>
+          <Show when={desktopReviewOpen() || !!layout.sideChat.sessionID()}>
             <div onPointerDown={() => size.start()}>
               <ResizeHandle
                 classList={{
@@ -1826,19 +1831,26 @@ export default function Page() {
           </Show>
         </div>
 
-        <SessionSidePanel
-          canReview={canReview}
-          diffs={reviewDiffs}
-          diffsReady={reviewReady}
-          empty={reviewEmptyText}
-          hasReview={hasReview}
-          reviewCount={reviewCount}
-          reviewPanel={reviewPanel}
-          activeDiff={tree.activeDiff}
-          focusReviewDiff={focusReviewDiff}
-          reviewSnap={ui.reviewSnap}
-          size={size}
-        />
+        <Show
+          when={layout.sideChat.sessionID()}
+          fallback={
+            <SessionSidePanel
+              canReview={canReview}
+              diffs={reviewDiffs}
+              diffsReady={reviewReady}
+              empty={reviewEmptyText}
+              hasReview={hasReview}
+              reviewCount={reviewCount}
+              reviewPanel={reviewPanel}
+              activeDiff={tree.activeDiff}
+              focusReviewDiff={focusReviewDiff}
+              reviewSnap={ui.reviewSnap}
+              size={size}
+            />
+          }
+        >
+          <SideChatPanel />
+        </Show>
       </div>
 
       <TerminalPanel />
