@@ -100,6 +100,12 @@ const ModelList: Component<{
           <Show when={i.latest}>
             <Tag>{language.t("model.tag.latest")}</Tag>
           </Show>
+          <Show when={i.capabilities?.reasoning}>
+            <Icon name="brain" size="small" class="shrink-0 text-icon-weak" />
+          </Show>
+          <Show when={i.capabilities?.input?.image}>
+            <Icon name="photo" size="small" class="shrink-0 text-icon-weak" />
+          </Show>
         </div>
       )}
     </List>
@@ -452,6 +458,12 @@ export function ModelSelectorPopoverV2(props: {
                               </Show>
                               <Show when={item.latest}>
                                 <TagV2 class="shrink-0">{language.t("model.tag.latest")}</TagV2>
+                              </Show>
+                              <Show when={item.capabilities?.reasoning}>
+                                <Icon name="brain" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+                              </Show>
+                              <Show when={item.capabilities?.input?.image}>
+                                <Icon name="photo" size="small" class="shrink-0 text-v2-icon-icon-muted" />
                               </Show>
                             </MenuV2.RadioItem>
                           )}

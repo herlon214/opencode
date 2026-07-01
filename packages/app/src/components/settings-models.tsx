@@ -119,8 +119,14 @@ const SettingsModelsContent: Component = () => {
                         const key = { providerID: item.provider.id, modelID: item.id }
                         return (
                           <div class="flex flex-wrap items-center justify-between gap-4 py-3 border-b border-border-weak-base last:border-none">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex items-center gap-x-2">
                               <span class="text-14-regular text-text-strong truncate block">{item.name}</span>
+                              <Show when={item.capabilities?.reasoning}>
+                                <Icon name="brain" size="small" class="shrink-0 text-icon-weak" />
+                              </Show>
+                              <Show when={item.capabilities?.input?.image}>
+                                <Icon name="photo" size="small" class="shrink-0 text-icon-weak" />
+                              </Show>
                             </div>
                             <div class="flex-shrink-0">
                               <Switch

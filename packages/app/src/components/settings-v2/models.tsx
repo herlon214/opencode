@@ -110,7 +110,20 @@ export const SettingsModelsV2: Component = () => {
                       {(item) => {
                         const key = { providerID: item.provider.id, modelID: item.id }
                         return (
-                          <SettingsRowV2 title={item.name} description="">
+                          <SettingsRowV2
+                            title={
+                              <div class="flex items-center gap-x-2 min-w-0">
+                                <span class="truncate">{item.name}</span>
+                                <Show when={item.capabilities?.reasoning}>
+                                  <IconV2 name="brain" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+                                </Show>
+                                <Show when={item.capabilities?.input?.image}>
+                                  <IconV2 name="photo" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+                                </Show>
+                              </div>
+                            }
+                            description=""
+                          >
                             <div>
                               <Switch
                                 checked={models.visible(key)}
