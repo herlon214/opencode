@@ -1118,9 +1118,20 @@ export function MessageTimeline(props: {
       return ms === undefined ? undefined : formatDuration(ms)
     })
 
+    const [tick, setTick] = createSignal(Date.now())
+    const workingElapsed = createMemo(() => {
+      if (!active() || !tick()) return undefined
+      const message = messageByID().get(props.row().userMessageID)
+      if (!message || message.role !== "user") return undefined
+      return formatDuration(Math.max(0, tick() - message.time.created))
+    })
+
     createEffect(
       on(active, (isActive) => {
         if (isActive && !focus()) setOpen(true)
+        if (!isActive) return
+        const interval = setInterval(() => setTick(Date.now()), 1000)
+        onCleanup(() => clearInterval(interval))
       }),
     )
 
@@ -1146,6 +1157,21 @@ export function MessageTimeline(props: {
         <span data-slot="in-progress-group-label" class="shrink-0">
           {label()}
         </span>
+        <Show when={active() && workingElapsed()}>
+          {(elapsed) => (
+            <>
+              <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
+                ·
+              </span>
+              <span
+                data-slot="in-progress-group-elapsed"
+                class="shrink-0 font-normal text-text-weak tabular-nums"
+              >
+                {elapsed()}
+              </span>
+            </>
+          )}
+        </Show>
         <Show when={showSummary}>
           <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
             ·
