@@ -10,6 +10,8 @@ export function SessionFollowupDock(props: {
   sending?: string
   onSend: (id: string) => void
   onEdit: (id: string) => void
+  onRemove: (id: string) => void
+  onClear: () => void
 }) {
   const language = useLanguage()
   const [store, setStore] = createStore({
@@ -49,7 +51,22 @@ export function SessionFollowupDock(props: {
         <Show when={store.collapsed && preview()}>
           <span class="min-w-0 flex-1 truncate text-13-regular text-text-base cursor-default">{preview()}</span>
         </Show>
-        <div class="ml-auto shrink-0">
+        <div class="ml-auto shrink-0 flex items-center">
+          <IconButton
+            icon="trash"
+            size="normal"
+            variant="ghost"
+            disabled={!!props.sending}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onClick={(event) => {
+              event.stopPropagation()
+              props.onClear()
+            }}
+            aria-label={language.t("session.followupDock.clear")}
+          />
           <IconButton
             data-collapsed={store.collapsed ? "true" : "false"}
             icon="chevron-down"
@@ -99,6 +116,15 @@ export function SessionFollowupDock(props: {
                 >
                   {language.t("session.followupDock.edit")}
                 </Button>
+                <IconButton
+                  icon="close-small"
+                  size="small"
+                  variant="ghost"
+                  class="shrink-0"
+                  disabled={!!props.sending}
+                  onClick={() => props.onRemove(item.id)}
+                  aria-label={language.t("session.followupDock.remove")}
+                />
               </div>
             )}
           </For>

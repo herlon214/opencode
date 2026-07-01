@@ -537,11 +537,13 @@ export default function Page() {
       failed: Record<string, string | undefined>
       paused: Record<string, boolean | undefined>
       edit: Record<string, FollowupEdit | undefined>
+      editing: Record<string, string | undefined>
     }>({
       items: {},
       failed: {},
       paused: {},
       edit: {},
+      editing: {},
     }),
   )
 
@@ -917,6 +919,34 @@ export default function Page() {
       current = current.shadowRoot.activeElement
     }
     return current instanceof HTMLElement ? current : undefined
+  }
+
+  // Timestamp of the last pointer press, used to tell a user-initiated focus
+  // move (preceded by a pointerdown) apart from an involuntary one (host
+  // detached/reattached during a re-render, which has no pointer event).
+  let lastPointerDown = 0
+
+  const handleProtectedFocusOut = (event: FocusEvent) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    if (!target.closest("[data-prevent-autofocus]")) return
+    // Focus left a protected editing region (e.g. an open line-comment editor)
+    // for "nothing". This happens when its host is detached/reattached during a
+    // diff re-render while the agent streams. Restore it on the next frame so
+    // the document keydown handler never hijacks the next keystroke into the
+    // composer. Intentional moves are left alone: relatedTarget set means focus
+    // moved to a specific element, and a recent pointerdown means the user
+    // clicked (possibly to a non-focusable area). Closed editors (disconnected)
+    // are also skipped.
+    if (event.relatedTarget !== null) return
+    if (performance.now() - lastPointerDown < 100) return
+    requestAnimationFrame(() => {
+      if (!target.isConnected) return
+      if (dialog.active) return
+      const active = deepActiveElement()
+      if (active && isEditableTarget(active)) return
+      target.focus()
+    })
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -1593,12 +1623,39 @@ export default function Page() {
   }
 
   const queueFollowup = (draft: FollowupDraft) => {
+    const editingId = followup.editing[draft.sessionID]
+    if (editingId && (followup.items[draft.sessionID] ?? []).some((entry) => entry.id === editingId)) {
+      setFollowup("items", draft.sessionID, (items) =>
+        (items ?? []).map((entry) => (entry.id === editingId ? { id: editingId, ...draft } : entry)),
+      )
+      setFollowup("failed", draft.sessionID, (value) => (value === editingId ? undefined : value))
+      setFollowup("editing", draft.sessionID, undefined)
+      return
+    }
     setFollowup("items", draft.sessionID, (items) => [
       ...(items ?? []),
       { id: Identifier.ascending("message"), ...draft },
     ])
     setFollowup("failed", draft.sessionID, undefined)
     setFollowup("paused", draft.sessionID, undefined)
+    setFollowup("editing", draft.sessionID, undefined)
+  }
+
+  const removeFollowup = (id: string) => {
+    const sessionID = params.id
+    if (!sessionID) return
+    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
+    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
+    setFollowup("editing", sessionID, (value) => (value === id ? undefined : value))
+  }
+
+  const clearFollowups = () => {
+    const sessionID = params.id
+    if (!sessionID) return
+    setFollowup("items", sessionID, undefined)
+    setFollowup("failed", sessionID, undefined)
+    setFollowup("paused", sessionID, undefined)
+    setFollowup("editing", sessionID, undefined)
   }
 
   const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
@@ -1620,7 +1677,7 @@ export default function Page() {
     const item = queuedFollowups().find((entry) => entry.id === id)
     if (!item) return
 
-    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
+    setFollowup("editing", sessionID, id)
     setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
     setFollowup("edit", sessionID, {
       id: item.id,
@@ -1726,6 +1783,7 @@ export default function Page() {
 
     const item = queuedFollowups()[0]
     if (!item) return
+    if (followup.editing[sessionID] === item.id) return
     if (followupBusy(sessionID)) return
     if (followup.failed[sessionID] === item.id) return
     if (followup.paused[sessionID]) return
@@ -1795,6 +1853,15 @@ export default function Page() {
 
   onMount(() => {
     makeEventListener(document, "keydown", handleKeyDown)
+    makeEventListener(document, "focusout", handleProtectedFocusOut)
+    makeEventListener(
+      document,
+      "pointerdown",
+      () => {
+        lastPointerDown = performance.now()
+      },
+      { capture: true },
+    )
   })
 
   onCleanup(() => {
@@ -1828,6 +1895,8 @@ export default function Page() {
               sending: sendingFollowup(),
               onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
               onEdit: editFollowup,
+              onRemove: removeFollowup,
+              onClear: clearFollowups,
             }
           : undefined,
       revert: () =>
