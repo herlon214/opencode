@@ -1097,6 +1097,13 @@ export function MessageTimeline(props: {
     )
   }
 
+  function AnimatedEllipsis() {
+    const [dots, setDots] = createSignal(1)
+    const interval = setInterval(() => setDots((n) => (n % 3) + 1), 400)
+    onCleanup(() => clearInterval(interval))
+    return <span aria-hidden="true">{".".repeat(dots())}</span>
+  }
+
   function InProgressGroupView(props: {
     row: Accessor<TimelineRowByTag<"InProgressGroup">>
     onSizeChange?: () => void
@@ -1124,12 +1131,18 @@ export function MessageTimeline(props: {
       return language.t("ui.sessionTurn.status.working")
     })
 
+    const stepCount = createMemo(
+      () => `${groupCount()} ${language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}`,
+    )
+    const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
+
     return (
       <Collapsible
         open={open()}
         onOpenChange={setOpen}
         variant="ghost"
-        class="in-progress-collapsible pb-2 border-b border-border-weak-base"
+        class="in-progress-collapsible rounded-none pb-2"
+        classList={{ "border-b border-border-weak-base": !active() }}
         data-timeline-part-ids={props
           .row()
           .groups.map((item) => item.group.key)
@@ -1146,11 +1159,27 @@ export function MessageTimeline(props: {
               <span data-slot="in-progress-group-label" class="shrink-0">
                 {label()}
               </span>
+              <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
+                ·
+              </span>
               <span
                 data-slot="in-progress-group-summary"
                 class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-normal text-text-base"
               >
-                {groupCount()} {language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}
+                {stepCount()}
+                <Show when={heading()}>
+                  {(text) => (
+                    <>
+                      <span class="mx-2 font-normal text-text-weak" aria-hidden="true">
+                        ·
+                      </span>
+                      {text()}
+                      <Show when={active()}>
+                        <AnimatedEllipsis />
+                      </Show>
+                    </>
+                  )}
+                </Show>
               </span>
             </span>
             <Collapsible.Arrow />

@@ -303,6 +303,12 @@
     color: var(--text-weak);
   }
 
+  [data-slot="reasoning-part-icon"] {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-weak);
+  }
+
   [data-slot="reasoning-part-title"] {
     color: var(--text-weak);
   }
@@ -670,6 +676,12 @@
     min-width: 0;
   }
 
+  [data-slot="context-tool-group-icon"] {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-weak);
+  }
+
   [data-slot="collapsible-arrow"] {
     color: var(--icon-weaker);
     cursor: pointer;
@@ -709,7 +721,19 @@
   padding-left: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+
+  [data-slot="reasoning-part-header"] {
+    margin-top: 0;
+  }
+
+  [data-component="reasoning-part"] [data-component="markdown"] {
+    margin-top: 0;
+  }
+
+  [data-component="text-part"] {
+    margin-top: 0;
+  }
 }
 
 [data-component="context-tool-group-list"] {

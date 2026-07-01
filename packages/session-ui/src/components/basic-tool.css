@@ -28,11 +28,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    align-self: center;
     flex-shrink: 0;
 
     [data-component="spinner"] {
       width: 16px;
       height: 16px;
+    }
+
+    .tool-icon-weak {
+      color: var(--text-weak);
     }
   }
 
@@ -98,6 +103,10 @@
     &.agent-title {
       color: var(--v2-text-text-base);
       font-weight: var(--font-weight-medium);
+    }
+
+    &.tool-title-weak {
+      color: var(--text-weak);
     }
   }
 
@@ -256,6 +265,10 @@ body:not([data-new-layout]) {
     [data-slot="basic-tool-tool-title"],
     [data-slot="basic-tool-tool-title"].agent-title {
       color: var(--text-strong);
+    }
+
+    [data-slot="basic-tool-tool-title"].tool-title-weak {
+      color: var(--text-weak);
     }
 
     [data-slot="basic-tool-tool-subtitle"],

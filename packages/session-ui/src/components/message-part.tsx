@@ -1028,8 +1028,11 @@ export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean; onS
         <div data-component="context-tool-group-trigger">
           <span
             data-slot="context-tool-group-title"
-            class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong"
+            class="min-w-0 flex items-center gap-2 text-14-medium text-text-weak"
           >
+            <span data-slot="context-tool-group-icon">
+              <Icon name="magnifying-glass" size="small" />
+            </span>
             <span data-slot="context-tool-group-label" class="shrink-0">
               <ToolStatusTitle
                 active={pending()}
@@ -1678,6 +1681,9 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
     <Show when={text()}>
       <div data-component="reasoning-part" data-timeline-part-id={part().id}>
         <div data-slot="reasoning-part-header">
+          <span data-slot="reasoning-part-icon">
+            <Icon name="brain" size="small" />
+          </span>
           <span data-slot="reasoning-part-title">
             <TextShimmer
               text={isDone() ? i18n.t("ui.sessionTurn.status.thought") : i18n.t("ui.sessionTurn.status.thinking")}
@@ -2506,21 +2512,26 @@ ToolRegistry.register({
   name: "skill",
   render(props) {
     const i18n = useI18n()
-    const title = createMemo(() => props.input.name || i18n.t("ui.tool.skill"))
     const running = createMemo(() => props.status === "pending" || props.status === "running")
+    const name = createMemo(() => {
+      const raw = props.input.name
+      if (!raw) return undefined
+      return raw.charAt(0).toUpperCase() + raw.slice(1)
+    })
+    const title = createMemo(() => {
+      const skillName = name()
+      if (!skillName) return i18n.t("ui.tool.skill")
+      return i18n.t(running() ? "ui.tool.skill.loading" : "ui.tool.skill.loaded", { name: skillName })
+    })
 
-    const titleContent = () => <TextShimmer text={title()} active={running()} />
-
-    const trigger = () => (
-      <div data-slot="basic-tool-tool-info-structured">
-        <div data-slot="basic-tool-tool-info-main">
-          <span data-slot="basic-tool-tool-title" class="capitalize agent-title">
-            {titleContent()}
-          </span>
-        </div>
-      </div>
+    return (
+      <BasicTool
+        icon="checklist"
+        iconClass="tool-icon-weak"
+        status={props.status}
+        trigger={{ title: title(), titleClass: "tool-title-weak" }}
+        hideDetails
+      />
     )
-
-    return <BasicTool icon="brain" status={props.status} trigger={trigger()} hideDetails />
   },
 })

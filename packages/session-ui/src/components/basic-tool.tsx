@@ -25,6 +25,7 @@ const isTriggerTitle = (val: any): val is TriggerTitle => {
 
 export interface BasicToolProps {
   icon: IconProps["name"]
+  iconClass?: string
   trigger: TriggerTitle | JSX.Element | ((open: Accessor<boolean>) => JSX.Element)
   children?: JSX.Element
   status?: string
@@ -195,7 +196,7 @@ export function BasicTool(props: BasicToolProps) {
                 <div data-slot="basic-tool-tool-info-structured">
                   <div data-slot="basic-tool-tool-info-main">
                     <span data-slot="basic-tool-tool-indicator">
-                      <Show when={pending()} fallback={<Icon name={props.icon} size="small" />}>
+                      <Show when={pending()} fallback={<Icon name={props.icon} size="small" class={props.iconClass} />}>
                         <Spinner />
                       </Show>
                     </span>
@@ -331,9 +332,11 @@ export function GenericTool(props: {
   return (
     <BasicTool
       icon="mcp"
+      iconClass="tool-icon-weak"
       status={props.status}
       trigger={{
         title: props.tool,
+        titleClass: "tool-title-weak",
         subtitle: label(props.input),
         args: args(props.input),
       }}

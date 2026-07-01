@@ -30,6 +30,7 @@ export type TimelineRowMap = {
     groups: { type: "part"; group: PartGroup }[]
     previousAssistantPart: boolean
     active: boolean
+    lastThoughtHeading?: string
   }
   Thinking: { userMessageID: string; reasoningHeading?: string; reasoningTokens: number }
   Retry: { userMessageID: string }
@@ -63,6 +64,7 @@ export namespace TimelineRow {
     groups: { type: "part"; group: PartGroup }[]
     previousAssistantPart: boolean
     active: boolean
+    lastThoughtHeading?: string
   }> {}
   export class Thinking extends Data.TaggedClass("Thinking")<{
     userMessageID: string
@@ -149,6 +151,7 @@ export namespace Timeline {
         .filter((part) => renderable(part, showReasoning || collapseInProgress))
         .map((part) => ({ messageID: message.id, messageIndex, part })),
     )
+    const partByID = new Map(assistantPartRefs.map((ref) => [ref.part.id, ref.part]))
     const assistantItems =
       interrupted && !compaction
         ? [
@@ -199,12 +202,13 @@ export namespace Timeline {
       const allPartItems = assistantItems.filter(
         (item): item is { type: "part"; group: PartGroup } => item.type === "part",
       )
-      // Only the last assistant message can contribute the turn's final text. An earlier
-      // message's concluding text is intermediate; treating it as final would slice off
-      // every later (still-streaming) part from the in-progress group, freezing the view
-      // until the real final text arrives.
-      const lastAssistantMessageID = assistantMessages.at(-1)?.id
-      const finalTextIndex = findFinalTextGroup(allPartItems, getMessageParts, lastAssistantMessageID)
+      // Only the last assistant message can contribute the turn's final text, and only once
+      // it actually finished with "stop" — a text part can appear mid-turn (e.g. narration
+      // before more tool calls) and must stay inside the in-progress group until then.
+      const lastAssistantMessage = assistantMessages.at(-1)
+      const lastAssistantMessageID = lastAssistantMessage?.id
+      const finalTextIndex =
+        lastAssistantMessage?.finish === "stop" ? findFinalTextGroup(allPartItems, partByID, lastAssistantMessageID) : -1
       const hasFinal = finalTextIndex !== -1
       const finalItem = hasFinal ? allPartItems[finalTextIndex]! : undefined
 
@@ -214,7 +218,12 @@ export namespace Timeline {
       let currentSegment: { type: "part"; group: PartGroup }[] = []
       for (const item of assistantItems) {
         if (item.type === "interrupted") {
-          emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, isActive, status, error)
+          emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, partByID, {
+            isActive,
+            status,
+            error,
+            hasFinalFollowing: false,
+          })
           assistantGroupIndex += currentSegment.length
           if (currentSegment.length > 0) emittedInProgressGroup = true
           rows.push(new TimelineRow.TurnDivider({ userMessageID: userMessage.id, label: "interrupted" }))
@@ -227,7 +236,12 @@ export namespace Timeline {
         }
       }
       if (currentSegment.length > 0) {
-        emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, isActive, status, error)
+        emitInProgressSegment(rows, currentSegment, userMessage.id, assistantGroupIndex, partByID, {
+          isActive,
+          status,
+          error,
+          hasFinalFollowing: hasFinal,
+        })
         assistantGroupIndex += currentSegment.length
         emittedInProgressGroup = true
       }
@@ -326,7 +340,7 @@ export namespace Timeline {
 
   function findFinalTextGroup(
     items: { type: "part"; group: PartGroup }[],
-    getMessageParts: (messageID: string) => Part[],
+    partByID: Map<string, Part>,
     lastAssistantMessageID: string | undefined,
   ): number {
     for (let i = items.length - 1; i >= 0; i--) {
@@ -334,10 +348,25 @@ export namespace Timeline {
       const group = item.group
       if (group.type !== "part") continue
       if (group.ref.messageID !== lastAssistantMessageID) continue
-      const part = getMessageParts(group.ref.messageID).find((p) => p.id === group.ref.partID)
+      const part = partByID.get(group.ref.partID)
       if (part?.type === "text" && part.text?.trim()) return i
     }
     return -1
+  }
+
+  function lastReasoningHeading(
+    segment: { type: "part"; group: PartGroup }[],
+    partByID: Map<string, Part>,
+  ): string | undefined {
+    for (let i = segment.length - 1; i >= 0; i--) {
+      const group = segment[i]!.group
+      if (group.type !== "part") continue
+      const part = partByID.get(group.ref.partID)
+      if (part?.type !== "reasoning") continue
+      const heading = reasoningHeading(part.text ?? "")
+      if (heading) return heading
+    }
+    return undefined
   }
 
   function emitInProgressSegment(
@@ -345,9 +374,15 @@ export namespace Timeline {
     segment: { type: "part"; group: PartGroup }[],
     userMessageID: string,
     assistantGroupIndex: number,
-    isActive: boolean,
-    status: SessionStatus["type"],
-    error: { name: string; data?: { message?: unknown } } | undefined,
+    partByID: Map<string, Part>,
+    opts: {
+      isActive: boolean
+      status: SessionStatus["type"]
+      error: { name: string; data?: { message?: unknown } } | undefined
+      // A final answer following this segment makes a stale "last thought" redundant
+      // with the real response, so the heading is suppressed in that case.
+      hasFinalFollowing: boolean
+    },
   ) {
     if (segment.length === 0) return
     rows.push(
@@ -355,7 +390,8 @@ export namespace Timeline {
         userMessageID,
         groups: segment,
         previousAssistantPart: assistantGroupIndex > 0,
-        active: isActive && status === "busy" && !error,
+        active: opts.isActive && opts.status === "busy" && !opts.error,
+        lastThoughtHeading: opts.hasFinalFollowing ? undefined : lastReasoningHeading(segment, partByID),
       }),
     )
   }
