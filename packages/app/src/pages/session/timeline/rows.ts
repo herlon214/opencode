@@ -1,10 +1,10 @@
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { AssistantMessage, Part, SessionStatus, SnapshotFileDiff, UserMessage } from "@opencode-ai/sdk/v2"
-import { groupParts, PartGroup, renderable } from "@opencode-ai/session-ui/message-part"
+import { groupParts, renderable, type PartGroup } from "@opencode-ai/session-ui/message-part"
 import { reasoningHeading } from "@opencode-ai/session-ui/message-part-reasoning"
-import { Data, Equal } from "effect"
+import { TimelineRow, type SummaryDiff } from "./timeline-row"
 
-export type SummaryDiff = SnapshotFileDiff & { file: string }
+export { TimelineRow, type SummaryDiff } from "./timeline-row"
 
 export type TimelineRowMap = {
   TurnGap: { userMessageID: string }
@@ -36,93 +36,6 @@ export type TimelineRowMap = {
   Retry: { userMessageID: string }
   DiffSummary: { userMessageID: string; diffs: SummaryDiff[] }
   Error: { userMessageID: string; text: string }
-}
-
-export namespace TimelineRow {
-  export class TurnGap extends Data.TaggedClass("TurnGap")<{
-    userMessageID: string
-  }> {}
-  export class CommentStrip extends Data.TaggedClass("CommentStrip")<{
-    userMessageID: string
-  }> {}
-  export class UserMessage extends Data.TaggedClass("UserMessage")<{
-    userMessageID: string
-    anchor: boolean
-  }> {}
-  export class TurnDivider extends Data.TaggedClass("TurnDivider")<{
-    userMessageID: string
-    label: "compaction" | "interrupted"
-  }> {}
-  export class AssistantPart extends Data.TaggedClass("AssistantPart")<{
-    userMessageID: string
-    group: PartGroup
-    previousAssistantPart: boolean
-    followsInProgress: boolean
-  }> {}
-  export class InProgressGroup extends Data.TaggedClass("InProgressGroup")<{
-    userMessageID: string
-    groups: { type: "part"; group: PartGroup }[]
-    previousAssistantPart: boolean
-    active: boolean
-    lastThoughtHeading?: string
-  }> {}
-  export class Thinking extends Data.TaggedClass("Thinking")<{
-    userMessageID: string
-    reasoningHeading?: string
-    reasoningTokens: number
-  }> {}
-  export class DiffSummary extends Data.TaggedClass("DiffSummary")<{
-    userMessageID: string
-    diffs: SummaryDiff[]
-  }> {}
-  export class Error extends Data.TaggedClass("Error")<{
-    userMessageID: string
-    text: string
-  }> {}
-  export class Retry extends Data.TaggedClass("Retry")<{
-    userMessageID: string
-  }> {}
-
-  export type TimelineRow =
-    | TurnGap
-    | CommentStrip
-    | UserMessage
-    | TurnDivider
-    | AssistantPart
-    | InProgressGroup
-    | Thinking
-    | DiffSummary
-    | Error
-    | Retry
-
-  export const key = (row: TimelineRow) => {
-    switch (row._tag) {
-      case "TurnGap":
-        return `turn-gap:${row.userMessageID}`
-      case "CommentStrip":
-        return `comment-strip:${row.userMessageID}`
-      case "UserMessage":
-        return `user-message:${row.userMessageID}`
-      case "TurnDivider":
-        return `turn-divider:${row.userMessageID}:${row.label}`
-      case "AssistantPart":
-        return `assistant-part:${row.userMessageID}:${row.group.key}`
-      case "InProgressGroup":
-        return `in-progress-group:${row.userMessageID}`
-      case "Thinking":
-        return `thinking:${row.userMessageID}`
-      case "DiffSummary":
-        return `diff-summary:${row.userMessageID}`
-      case "Error":
-        return `error:${row.userMessageID}`
-      case "Retry":
-        return `retry:${row.userMessageID}`
-    }
-  }
-
-  export function equals(a: TimelineRow, b: TimelineRow) {
-    return Equal.equals(a, b)
-  }
 }
 
 export namespace Timeline {

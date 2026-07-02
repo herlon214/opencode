@@ -1050,16 +1050,24 @@ export function AssistantMessageDisplay(props: {
   )
 }
 
-export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean; onSizeChange?: () => void }) {
+export function ContextToolGroup(props: {
+  parts: ToolPart[]
+  busy?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  onSizeChange?: () => void
+}) {
   const i18n = useI18n()
-  const [open, setOpen] = createSignal(false)
+  const [localOpen, setLocalOpen] = createSignal(false)
+  const open = () => props.open ?? localOpen()
   const pending = createMemo(
     () =>
       !!props.busy || props.parts.some((part) => part.state.status === "pending" || part.state.status === "running"),
   )
   const summary = createMemo(() => contextToolSummary(props.parts))
   const handleOpenChange = (value: boolean) => {
-    setOpen(value)
+    if (props.open === undefined) setLocalOpen(value)
+    props.onOpenChange?.(value)
     props.onSizeChange?.()
   }
 
@@ -1831,7 +1839,13 @@ ToolRegistry.register({
         trigger={{ title: i18n.t("ui.tool.list"), subtitle: getDirectory(props.input.path || "/") }}
       >
         <Show when={props.output}>
-          <div data-component="tool-output" data-scrollable>
+          <div
+            data-component="tool-output"
+            data-scrollable
+            tabIndex={0}
+            role="region"
+            aria-label={i18n.t("ui.scrollView.ariaLabel")}
+          >
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -1855,7 +1869,13 @@ ToolRegistry.register({
         }}
       >
         <Show when={props.output}>
-          <div data-component="tool-output" data-scrollable>
+          <div
+            data-component="tool-output"
+            data-scrollable
+            tabIndex={0}
+            role="region"
+            aria-label={i18n.t("ui.scrollView.ariaLabel")}
+          >
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -1882,7 +1902,13 @@ ToolRegistry.register({
         }}
       >
         <Show when={props.output}>
-          <div data-component="tool-output" data-scrollable>
+          <div
+            data-component="tool-output"
+            data-scrollable
+            tabIndex={0}
+            role="region"
+            aria-label={i18n.t("ui.scrollView.ariaLabel")}
+          >
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -2013,6 +2039,12 @@ ToolRegistry.register({
       event.preventDefault()
       open()
     }
+    const navigateKey = (event: KeyboardEvent) => {
+      if (!clickable() || href()) return
+      if (event.key !== "Enter" && event.key !== " ") return
+      event.preventDefault()
+      open()
+    }
 
     const trigger = () => (
       <div data-component="task-tool-card">
@@ -2045,9 +2077,11 @@ ToolRegistry.register({
         status={props.status}
         trigger={trigger()}
         hideDetails
+        triggerAsLink
         triggerHref={href()}
         clickable={clickable()}
         onTriggerClick={navigate}
+        onTriggerKeyDown={navigateKey}
       />
     )
   },
@@ -2110,7 +2144,13 @@ ToolRegistry.register({
               />
             </TooltipV2>
           </div>
-          <div data-slot="bash-scroll" data-scrollable>
+          <div
+            data-slot="bash-scroll"
+            data-scrollable
+            tabIndex={0}
+            role="region"
+            aria-label={i18n.t("ui.scrollView.ariaLabel")}
+          >
             <pre data-slot="bash-pre">
               <code>{text()}</code>
             </pre>
