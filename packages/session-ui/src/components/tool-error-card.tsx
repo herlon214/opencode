@@ -14,6 +14,7 @@ export interface ToolErrorCardProps extends Omit<ComponentProps<typeof Card>, "c
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  durationLabel?: string
   subtitle?: string
   href?: string
 }
@@ -33,6 +34,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
     "defaultOpen",
     "open",
     "onOpenChange",
+    "durationLabel",
     "subtitle",
     "href",
   ])
@@ -115,6 +117,16 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                       >
                         {subtitle()}
                       </a>
+                    </Show>
+                    <Show when={split.durationLabel}>
+                      {(duration) => (
+                        <span data-slot="basic-tool-tool-duration">
+                          <span data-slot="basic-tool-tool-duration-divider" aria-hidden="true">
+                            ·
+                          </span>
+                          {duration()}
+                        </span>
+                      )}
                     </Show>
                   </div>
                 </div>

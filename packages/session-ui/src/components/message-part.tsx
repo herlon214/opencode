@@ -35,7 +35,7 @@ import { useData } from "../context"
 import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { type UiI18n, useI18n } from "@opencode-ai/ui/context/i18n"
-import { BasicTool, GenericTool } from "./basic-tool"
+import { BasicTool, GenericTool, ToolDuration } from "./basic-tool"
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { Collapsible } from "@opencode-ai/ui/collapsible"
@@ -1441,6 +1441,7 @@ export interface ToolProps {
   sessionID?: string
   output?: string
   status?: string
+  durationLabel?: string
   hideDetails?: boolean
   defaultOpen?: boolean
   open?: boolean
@@ -1453,6 +1454,13 @@ export interface ToolProps {
 }
 
 export type ToolComponent = Component<ToolProps>
+
+function toolDurationLabel(state: ToolPart["state"]) {
+  if (!("time" in state)) return
+  if (!("end" in state.time)) return
+  const duration = Math.max(0, state.time.end - state.time.start)
+  return formatDuration(duration)
+}
 
 const state: Record<
   string,
@@ -1547,6 +1555,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
   const render = createMemo(() => ToolRegistry.render(part().tool) ?? GenericTool)
   const controlledOpen = () => (props.onToolOpenChange ? (props.toolOpen ?? props.defaultOpen) : undefined)
   const handleToolOpenChange = (open: boolean) => props.onToolOpenChange?.(open)
+  const durationLabel = createMemo(() => toolDurationLabel(part().state))
 
   return (
     <Show when={!hideQuestion()}>
@@ -1572,6 +1581,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
                   defaultOpen={props.defaultOpen}
                   open={controlledOpen()}
                   onOpenChange={props.onToolOpenChange ? handleToolOpenChange : undefined}
+                  durationLabel={durationLabel()}
                   subtitle={taskSubtitle()}
                   href={taskHref()}
                 />
@@ -1588,6 +1598,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               // @ts-expect-error
               output={part().state.output}
               status={part().state.status}
+              durationLabel={durationLabel()}
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
               open={controlledOpen()}
@@ -1955,6 +1966,7 @@ ToolRegistry.register({
                   {url()}
                 </a>
               </Show>
+              <ToolDuration durationLabel={props.durationLabel} />
             </div>
             <Show when={!pending() && url()}>
               <div data-component="tool-action">
@@ -2061,6 +2073,7 @@ ToolRegistry.register({
             <Show when={subtitle()}>
               <span data-slot="basic-tool-tool-subtitle">{subtitle()}</span>
             </Show>
+            <ToolDuration durationLabel={props.durationLabel} />
           </div>
         </div>
         <Show when={clickable()}>
@@ -2127,6 +2140,7 @@ ToolRegistry.register({
               <Show when={!pending() && !open() && props.input.command}>
                 <ShellSubmessage text={props.input.command} animate={sawPending} />
               </Show>
+              <ToolDuration durationLabel={props.durationLabel} />
             </div>
           </div>
         )}
@@ -2230,6 +2244,7 @@ ToolRegistry.register({
                   <Show when={!pending()}>
                     <span data-slot="message-part-title-filename">{filename()}</span>
                   </Show>
+                  <ToolDuration durationLabel={props.durationLabel} />
                 </div>
                 <Show when={!pending() && props.input.filePath?.includes("/")}>
                   <div data-slot="message-part-path">
@@ -2302,6 +2317,7 @@ ToolRegistry.register({
                   <Show when={!pending()}>
                     <span data-slot="message-part-title-filename">{filename()}</span>
                   </Show>
+                  <ToolDuration durationLabel={props.durationLabel} />
                 </div>
                 <Show when={!pending() && props.input.filePath?.includes("/")}>
                   <div data-slot="message-part-path">
@@ -2489,6 +2505,7 @@ ToolRegistry.register({
                     <Show when={!pending()}>
                       <span data-slot="message-part-title-filename">{getFilename(single()!.relativePath)}</span>
                     </Show>
+                    <ToolDuration durationLabel={props.durationLabel} />
                   </div>
                   <Show when={!pending() && single()!.relativePath.includes("/")}>
                     <div data-slot="message-part-path">
@@ -2663,6 +2680,7 @@ ToolRegistry.register({
         icon="bolt"
         iconClass="tool-icon-weak"
         status={props.status}
+        durationLabel={props.durationLabel}
         trigger={{ title: title(), titleClass: "tool-title-weak" }}
         hideDetails
       />

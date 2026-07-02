@@ -29,6 +29,7 @@ export interface BasicToolProps {
   trigger: TriggerTitle | JSX.Element | ((open: Accessor<boolean>) => JSX.Element)
   children?: JSX.Element
   status?: string
+  durationLabel?: string
   hideDetails?: boolean
   defaultOpen?: boolean
   open?: boolean
@@ -43,6 +44,21 @@ export interface BasicToolProps {
   triggerHref?: string
   triggerAsLink?: boolean
   clickable?: boolean
+}
+
+export function ToolDuration(props: { durationLabel?: string }) {
+  return (
+    <Show when={props.durationLabel}>
+      {(duration) => (
+        <span data-slot="basic-tool-tool-duration">
+          <span data-slot="basic-tool-tool-duration-divider" aria-hidden="true">
+            ·
+          </span>
+          {duration()}
+        </span>
+      )}
+    </Show>
+  )
 }
 
 const SPRING = { type: "spring" as const, visualDuration: 0.35, bounce: 0 }
@@ -243,6 +259,7 @@ export function BasicTool(props: BasicToolProps) {
                         </For>
                       </Show>
                     </Show>
+                    <ToolDuration durationLabel={props.durationLabel} />
                   </div>
                   <Show when={!pending() && title().action}>
                     <span data-slot="basic-tool-tool-action">{title().action}</span>
@@ -329,6 +346,7 @@ function args(input: Record<string, unknown> | undefined) {
 export function GenericTool(props: {
   tool: string
   status?: string
+  durationLabel?: string
   hideDetails?: boolean
   input?: Record<string, unknown>
 }) {
@@ -337,6 +355,7 @@ export function GenericTool(props: {
       icon="mcp"
       iconClass="tool-icon-weak"
       status={props.status}
+      durationLabel={props.durationLabel}
       trigger={{
         title: props.tool,
         titleClass: "tool-title-weak",

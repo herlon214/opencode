@@ -10,6 +10,10 @@
     color: var(--v2-text-text-muted);
   }
 
+  [data-slot="basic-tool-tool-duration"] {
+    color: var(--v2-text-text-muted);
+  }
+
   [data-slot="collapsible-arrow"],
   [data-slot="collapsible-arrow-icon"] {
     color: var(--v2-text-text-faint);
@@ -72,6 +76,10 @@ body:not([data-new-layout]) [data-component="card"][data-kind="tool-error-card"]
   }
 
   [data-slot="basic-tool-tool-subtitle"] {
+    color: var(--text-base);
+  }
+
+  [data-slot="basic-tool-tool-duration"] {
     color: var(--text-base);
   }
 
