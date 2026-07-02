@@ -1,0 +1,9 @@
+You are pursuing the following goal:
+
+$ARGUMENTS
+
+Work autonomously toward this goal. Continue making progress until the goal is achieved or you are blocked.
+
+When you believe the goal is complete, call the `update_goal` tool with status `complete` and a summary of what was accomplished.
+
+If you encounter a blocker that you cannot resolve on your own, call the `update_goal` tool with status `blocked` and explain the blocker in the summary.

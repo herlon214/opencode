@@ -70,6 +70,9 @@ export const SummarizePayload = Schema.Struct({
 export const PromptPayload = Schema.Struct(Struct.omit(SessionPrompt.PromptInput.fields, ["sessionID"]))
 export const CommandPayload = Schema.Struct(Struct.omit(SessionPrompt.CommandInput.fields, ["sessionID"]))
 export const ShellPayload = Schema.Struct(Struct.omit(SessionPrompt.ShellInput.fields, ["sessionID"]))
+export const GoalSetPayload = Schema.Struct({
+  objective: Schema.String,
+})
 export const RevertPayload = Schema.Struct(Struct.omit(SessionRevert.RevertInput.fields, ["sessionID"]))
 export const PermissionResponsePayload = Schema.Struct({
   response: PermissionV1.Reply,
@@ -102,6 +105,7 @@ export const SessionPaths = {
   deleteMessage: `${root}/:sessionID/message/:messageID`,
   deletePart: `${root}/:sessionID/message/:messageID/part/:partID`,
   updatePart: `${root}/:sessionID/message/:messageID/part/:partID`,
+  goal: `${root}/:sessionID/goal`,
 } as const
 
 export const SessionApi = HttpApi.make("session")
@@ -364,6 +368,55 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.shell",
             summary: "Run shell command",
             description: "Execute a shell command within the session context and return the AI's response.",
+          }),
+        ),
+        HttpApiEndpoint.post("goalSet", SessionPaths.goal, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          payload: GoalSetPayload,
+          success: described(Session.Info, "Goal set"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.goal.set",
+            summary: "Set session goal",
+            description: "Set a goal for the session that the agent will pursue autonomously.",
+          }),
+        ),
+        HttpApiEndpoint.delete("goalClear", SessionPaths.goal, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Session.Info, "Goal cleared"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.goal.clear",
+            summary: "Clear session goal",
+            description: "Remove the goal from the session.",
+          }),
+        ),
+        HttpApiEndpoint.post("goalPause", `${SessionPaths.goal}/pause`, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Session.Info, "Goal paused"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.goal.pause",
+            summary: "Pause session goal",
+            description: "Pause the active goal for the session.",
+          }),
+        ),
+        HttpApiEndpoint.post("goalResume", `${SessionPaths.goal}/resume`, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Session.Info, "Goal resumed"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.goal.resume",
+            summary: "Resume session goal",
+            description: "Resume a paused goal for the session.",
           }),
         ),
         HttpApiEndpoint.post("revert", SessionPaths.revert, {

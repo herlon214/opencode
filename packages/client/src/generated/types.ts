@@ -262,6 +262,12 @@ export type SessionsListOutput = {
         readonly patch: string
       }>
     }
+    readonly goal?: {
+      readonly objective: string
+      readonly status: "active" | "paused" | "blocked" | "complete"
+      readonly tokens_used: number
+      readonly time_used: number
+    } | null
   }>
   readonly cursor: { readonly previous?: string | null; readonly next?: string | null }
 }
@@ -324,6 +330,12 @@ export type SessionsCreateOutput = {
         readonly patch: string
       }>
     }
+    readonly goal?: {
+      readonly objective: string
+      readonly status: "active" | "paused" | "blocked" | "complete"
+      readonly tokens_used: number
+      readonly time_used: number
+    } | null
   }
 }["data"]
 
@@ -362,6 +374,12 @@ export type SessionsGetOutput = {
         readonly patch: string
       }>
     }
+    readonly goal?: {
+      readonly objective: string
+      readonly status: "active" | "paused" | "blocked" | "complete"
+      readonly tokens_used: number
+      readonly time_used: number
+    } | null
   }
 }["data"]
 

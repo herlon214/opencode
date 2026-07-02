@@ -34,6 +34,7 @@ import { SessionProcessor } from "./processor"
 import { Tool } from "@/tool/tool"
 import { Permission } from "@/permission"
 import { SessionStatus } from "./status"
+import { SessionGoal } from "./goal"
 import { LLM } from "./llm"
 import { Shell } from "@opencode-ai/core/shell"
 import { ShellID } from "@/tool/shell/id"
@@ -114,6 +115,7 @@ const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const status = yield* SessionStatus.Service
+    const goal = yield* SessionGoal.Service
     const sessions = yield* Session.Service
     const agents = yield* Agent.Service
     const provider = yield* Provider.Service
@@ -1125,6 +1127,34 @@ const layer = Layer.effect(
                 callID: orphan.callID,
               })
             }
+            const activeGoal = yield* goal.get(sessionID)
+            if (activeGoal?.status === "active") {
+              const agent = yield* agents.get(lastUser.agent)
+              const maxSteps = agent?.steps ?? Infinity
+              if (step >= maxSteps) {
+                yield* Effect.logInfo("goal continuation stopped at max steps", { "session.id": sessionID })
+                break
+              }
+              yield* Effect.logInfo("goal continuation", { "session.id": sessionID })
+              const continueMsg = yield* sessions.updateMessage({
+                id: MessageID.ascending(),
+                role: "user",
+                sessionID,
+                time: { created: Date.now() },
+                agent: lastUser.agent,
+                model: lastUser.model,
+              })
+              yield* sessions.updatePart({
+                id: PartID.ascending(),
+                messageID: continueMsg.id,
+                sessionID,
+                type: "text",
+                synthetic: true,
+                text: "Continue working toward the goal. If the goal is complete, call the update_goal tool with status complete. If you are blocked, call it with status blocked.",
+                time: { start: Date.now(), end: Date.now() },
+              })
+              continue
+            }
             yield* Effect.logInfo("exiting loop", { "session.id": sessionID })
             break
           }
@@ -1266,6 +1296,12 @@ const layer = Layer.effect(
               ...(mcpInstructions ? [mcpInstructions] : []),
               ...(skills ? [skills] : []),
             ]
+            const activeGoal = yield* goal.get(sessionID)
+            if (activeGoal?.status === "active") {
+              system.push(
+                `You are pursuing the following goal: ${activeGoal.objective}\n\nWork autonomously toward this goal. Continue making progress until the goal is achieved or you are blocked. When the goal is complete, call the update_goal tool with status complete. If you are blocked, call it with status blocked.`,
+              )
+            }
             const format = lastUser.format ?? { type: "text" as const }
             if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
             const result = yield* handle.process({
@@ -1370,6 +1406,17 @@ const layer = Layer.effect(
       }
       const agentName = cmd.agent ?? input.agent
 
+      if (input.command === Command.Default.GOAL) {
+        const sub = input.arguments.trim().toLowerCase()
+        if (sub === "pause" || sub === "resume" || sub === "clear") {
+          if (sub === "pause") yield* goal.pause(input.sessionID)
+          if (sub === "resume") yield* goal.resume(input.sessionID)
+          if (sub === "clear") yield* goal.clear(input.sessionID)
+          return yield* lastAssistant(input.sessionID)
+        }
+        if (!input.arguments.trim()) return yield* lastAssistant(input.sessionID)
+      }
+
       const raw = input.arguments.match(argsRegex) ?? []
       const args = raw.map((arg) => arg.replace(quoteTrimRegex, ""))
       const templateCommand = yield* Effect.promise(async () => cmd.template)
@@ -1463,6 +1510,10 @@ const layer = Layer.effect(
         { command: input.command, sessionID: input.sessionID, arguments: input.arguments },
         { parts },
       )
+
+      if (input.command === Command.Default.GOAL) {
+        yield* goal.set(input.sessionID, input.arguments.trim())
+      }
 
       const result = yield* prompt({
         sessionID: input.sessionID,
@@ -1601,6 +1652,7 @@ export const node = LayerNode.make({
   layer: layer,
   deps: [
     SessionStatus.node,
+    SessionGoal.node,
     Session.node,
     Agent.node,
     Provider.node,

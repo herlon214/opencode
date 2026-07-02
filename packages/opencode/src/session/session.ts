@@ -108,6 +108,15 @@ export function fromRow(row: SessionRow): Info {
     metadata: row.metadata ?? undefined,
     revert,
     permission: row.permission ? [...row.permission] : undefined,
+    goal:
+      row.goal_objective && row.goal_status
+        ? {
+            objective: row.goal_objective,
+            status: row.goal_status as "active" | "paused" | "blocked" | "complete",
+            tokens_used: row.goal_tokens_used,
+            time_used: row.goal_time_used,
+          }
+        : undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -151,6 +160,10 @@ export function toRow(info: Info) {
         }
       : null,
     permission: info.permission,
+    goal_objective: info.goal?.objective ?? null,
+    goal_status: info.goal?.status ?? null,
+    goal_tokens_used: info.goal?.tokens_used ?? 0,
+    goal_time_used: info.goal?.time_used ?? 0,
     time_created: info.time.created,
     time_updated: info.time.updated,
     time_compacting: info.time.compacting,
@@ -213,6 +226,13 @@ const Revert = Schema.Struct({
   diff: optional(Schema.String),
 })
 
+const Goal = Schema.Struct({
+  objective: Schema.String,
+  status: Schema.Literals(["active", "paused", "blocked", "complete"]),
+  tokens_used: Schema.Finite,
+  time_used: Schema.Finite,
+})
+
 const Model = Schema.Struct({
   id: ModelV2.ID,
   providerID: ProviderV2.ID,
@@ -241,6 +261,7 @@ export const Info = Schema.Struct({
   time: Time,
   permission: optional(PermissionV1.Ruleset),
   revert: optional(Revert),
+  goal: optional(Goal),
 }).annotate({ identifier: "Session" })
 export type Info = Types.DeepMutable<Schema.Schema.Type<typeof Info>>
 

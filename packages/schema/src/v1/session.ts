@@ -540,6 +540,13 @@ const SessionModel = Schema.Struct({
   variant: optional(Schema.String),
 })
 
+const SessionGoal = Schema.Struct({
+  objective: Schema.String,
+  status: Schema.Literals(["active", "paused", "blocked", "complete"]),
+  tokens_used: Schema.Finite,
+  time_used: Schema.Finite,
+})
+
 export const SessionInfo = Schema.Struct({
   id: SessionID,
   slug: Schema.String,
@@ -565,6 +572,7 @@ export const SessionInfo = Schema.Struct({
   }),
   permission: optional(PermissionV1.Ruleset),
   revert: optional(SessionRevert),
+  goal: optional(SessionGoal),
 }).annotate({ identifier: "Session" })
 export type SessionInfo = typeof SessionInfo.Type
 

@@ -218,6 +218,12 @@ export type Session = {
     snapshot?: string
     diff?: string
   }
+  goal?: {
+    objective: string
+    status: "active" | "paused" | "blocked" | "complete"
+    tokens_used: number
+    time_used: number
+  }
 }
 
 export type OutputFormatText = {
@@ -2238,6 +2244,12 @@ export type GlobalSession = {
     snapshot?: string
     diff?: string
   }
+  goal?: {
+    objective: string
+    status: "active" | "paused" | "blocked" | "complete"
+    tokens_used: number
+    time_used: number
+  }
   project: ProjectSummary | null
 }
 
@@ -3922,6 +3934,12 @@ export type SessionV2Info = {
   location: LocationRef
   subpath?: string
   revert?: RevertState
+  goal?: {
+    objective: string
+    status: "active" | "paused" | "blocked" | "complete"
+    tokens_used: number
+    time_used: number
+  }
 }
 
 export type PromptInputFileAttachment = {
@@ -10282,6 +10300,144 @@ export type SessionShellResponses = {
 }
 
 export type SessionShellResponse = SessionShellResponses[keyof SessionShellResponses]
+
+export type SessionGoalClearData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/goal"
+}
+
+export type SessionGoalClearErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionGoalClearError = SessionGoalClearErrors[keyof SessionGoalClearErrors]
+
+export type SessionGoalClearResponses = {
+  /**
+   * Goal cleared
+   */
+  200: Session
+}
+
+export type SessionGoalClearResponse = SessionGoalClearResponses[keyof SessionGoalClearResponses]
+
+export type SessionGoalSetData = {
+  body?: {
+    objective: string
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/goal"
+}
+
+export type SessionGoalSetErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionGoalSetError = SessionGoalSetErrors[keyof SessionGoalSetErrors]
+
+export type SessionGoalSetResponses = {
+  /**
+   * Goal set
+   */
+  200: Session
+}
+
+export type SessionGoalSetResponse = SessionGoalSetResponses[keyof SessionGoalSetResponses]
+
+export type SessionGoalPauseData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/goal/pause"
+}
+
+export type SessionGoalPauseErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionGoalPauseError = SessionGoalPauseErrors[keyof SessionGoalPauseErrors]
+
+export type SessionGoalPauseResponses = {
+  /**
+   * Goal paused
+   */
+  200: Session
+}
+
+export type SessionGoalPauseResponse = SessionGoalPauseResponses[keyof SessionGoalPauseResponses]
+
+export type SessionGoalResumeData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/goal/resume"
+}
+
+export type SessionGoalResumeErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionGoalResumeError = SessionGoalResumeErrors[keyof SessionGoalResumeErrors]
+
+export type SessionGoalResumeResponses = {
+  /**
+   * Goal resumed
+   */
+  200: Session
+}
+
+export type SessionGoalResumeResponse = SessionGoalResumeResponses[keyof SessionGoalResumeResponses]
 
 export type SessionRevertData = {
   body?: {

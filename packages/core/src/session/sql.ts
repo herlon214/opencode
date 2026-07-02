@@ -54,6 +54,10 @@ export const SessionTable = sqliteTable(
       providerID: string
       variant?: string
     }>(),
+    goal_objective: text(),
+    goal_status: text(),
+    goal_tokens_used: integer().notNull().default(0),
+    goal_time_used: integer().notNull().default(0),
     ...Timestamps,
     time_compacting: integer(),
     time_archived: integer(),

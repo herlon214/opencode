@@ -1,0 +1,15 @@
+Update the status of the current goal.
+
+Use this tool ONLY when pursuing a goal (set via the `/goal` command). Call it to signal that the goal has been fully achieved or that you are blocked and cannot make further progress without user intervention.
+
+## When to call
+
+- Call with status `complete` when the goal's objective has been fully accomplished. Before calling, make sure you have stated clearly what was accomplished in your last message.
+- Call with status `blocked` when you have hit a blocker that you cannot resolve on your own (missing permissions, external dependencies, unresolved ambiguity). Explain the blocker in your message before calling.
+
+Do NOT call this tool for partial progress — keep working and call it only at a true terminal state.
+
+## Parameters
+
+- `status`: Either `complete` or `blocked`.
+- `summary`: A concise summary of what was accomplished or what the blocker is.

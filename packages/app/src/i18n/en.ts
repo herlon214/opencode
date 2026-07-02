@@ -731,6 +731,17 @@ export const dict = {
   "session.header.open.app.powershell": "PowerShell",
   "session.header.open.app.sublimeText": "Sublime Text",
 
+  "session.goal.active": "Pursuing goal",
+  "session.goal.paused": "Goal paused",
+  "session.goal.blocked": "Goal blocked",
+  "session.goal.complete": "Goal achieved",
+  "session.goal.pause": "Pause",
+  "session.goal.resume": "Resume",
+  "session.goal.clear": "Clear",
+  "session.goal.edit": "Edit",
+  "session.goal.cancel": "Cancel",
+  "session.goal.save": "Save",
+
   "status.popover.trigger": "Status",
   "status.popover.ariaLabel": "Server configurations",
   "status.popover.tab.servers": "Servers",

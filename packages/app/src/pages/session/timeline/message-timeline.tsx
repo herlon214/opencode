@@ -1165,7 +1165,12 @@ export function MessageTimeline(props: {
     )
 
     const label = createMemo(() => {
-      if (active()) return language.t("ui.sessionTurn.status.working")
+      if (active()) {
+        const id = sessionID()
+        const goal = id ? sync().session.get(id)?.goal : undefined
+        if (goal?.status === "active") return "Pursuing goal"
+        return language.t("ui.sessionTurn.status.working")
+      }
       const duration = durationLabel()
       if (duration) return language.t("ui.sessionTurn.status.workedFor", { duration })
       return language.t("ui.sessionTurn.status.working")

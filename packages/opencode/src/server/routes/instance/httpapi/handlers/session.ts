@@ -9,6 +9,7 @@ import { Session } from "@/session/session"
 import { SessionCompaction } from "@/session/compaction"
 import { MessageV2 } from "@/session/message-v2"
 import { SessionPrompt } from "@/session/prompt"
+import { SessionGoal } from "@/session/goal"
 import { SessionRevert } from "@/session/revert"
 import { SessionRunState } from "@/session/run-state"
 import { SessionStatus } from "@/session/status"
@@ -26,6 +27,7 @@ import {
   CommandPayload,
   DiffQuery,
   ForkPayload,
+  GoalSetPayload,
   InitPayload,
   ListQuery,
   MessagesQuery,
@@ -50,6 +52,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     const session = yield* Session.Service
     const shareSvc = yield* SessionShare.Service
     const promptSvc = yield* SessionPrompt.Service
+    const goalSvc = yield* SessionGoal.Service
     const revertSvc = yield* SessionRevert.Service
     const compactSvc = yield* SessionCompaction.Service
     const runState = yield* SessionRunState.Service
@@ -410,6 +413,39 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return yield* session.updatePart(payload)
     })
 
+    const goalSet = Effect.fn("SessionHttpApi.goalSet")(function* (ctx: {
+      params: { sessionID: SessionID }
+      payload: typeof GoalSetPayload.Type
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      yield* goalSvc.set(ctx.params.sessionID, ctx.payload.objective)
+      return yield* requireSession(ctx.params.sessionID)
+    })
+
+    const goalClear = Effect.fn("SessionHttpApi.goalClear")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      yield* goalSvc.clear(ctx.params.sessionID)
+      return yield* requireSession(ctx.params.sessionID)
+    })
+
+    const goalPause = Effect.fn("SessionHttpApi.goalPause")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      yield* goalSvc.pause(ctx.params.sessionID)
+      return yield* requireSession(ctx.params.sessionID)
+    })
+
+    const goalResume = Effect.fn("SessionHttpApi.goalResume")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      yield* goalSvc.resume(ctx.params.sessionID)
+      return yield* requireSession(ctx.params.sessionID)
+    })
+
     return handlers
       .handle("list", list)
       .handle("status", status)
@@ -438,5 +474,9 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("deleteMessage", deleteMessage)
       .handle("deletePart", deletePart)
       .handle("updatePart", updatePart)
+      .handle("goalSet", goalSet)
+      .handle("goalClear", goalClear)
+      .handle("goalPause", goalPause)
+      .handle("goalResume", goalResume)
   }),
 )

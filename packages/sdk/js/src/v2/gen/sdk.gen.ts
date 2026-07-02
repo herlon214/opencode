@@ -193,6 +193,14 @@ import type {
   SessionForkResponses,
   SessionGetErrors,
   SessionGetResponses,
+  SessionGoalClearErrors,
+  SessionGoalClearResponses,
+  SessionGoalPauseErrors,
+  SessionGoalPauseResponses,
+  SessionGoalResumeErrors,
+  SessionGoalResumeResponses,
+  SessionGoalSetErrors,
+  SessionGoalSetResponses,
   SessionInitErrors,
   SessionInitResponses,
   SessionListErrors,
@@ -3359,6 +3367,143 @@ export class Provider extends HeyApiClient {
   }
 }
 
+export class Goal extends HeyApiClient {
+  /**
+   * Clear session goal
+   *
+   * Remove the goal from the session.
+   */
+  public clear<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<SessionGoalClearResponses, SessionGoalClearErrors, ThrowOnError>({
+      url: "/session/{sessionID}/goal",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Set session goal
+   *
+   * Set a goal for the session that the agent will pursue autonomously.
+   */
+  public set<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      objective?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "objective" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionGoalSetResponses, SessionGoalSetErrors, ThrowOnError>({
+      url: "/session/{sessionID}/goal",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Pause session goal
+   *
+   * Pause the active goal for the session.
+   */
+  public pause<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionGoalPauseResponses, SessionGoalPauseErrors, ThrowOnError>({
+      url: "/session/{sessionID}/goal/pause",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Resume session goal
+   *
+   * Resume a paused goal for the session.
+   */
+  public resume<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionGoalResumeResponses, SessionGoalResumeErrors, ThrowOnError>({
+      url: "/session/{sessionID}/goal/resume",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Session2 extends HeyApiClient {
   /**
    * List sessions
@@ -4324,6 +4469,11 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _goal?: Goal
+  get goal(): Goal {
+    return (this._goal ??= new Goal({ client: this.client }))
   }
 }
 
