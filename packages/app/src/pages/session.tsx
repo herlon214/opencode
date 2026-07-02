@@ -21,6 +21,7 @@ import { createMediaQuery } from "@solid-primitives/media"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { debounce } from "@solid-primitives/scheduled"
 import { useLocal } from "@/context/local"
+import { useCommand } from "@/context/command"
 import { FileProvider, selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { createStore } from "solid-js/store"
 import type { SessionReviewLineComment } from "@opencode-ai/session-ui/session-review"
@@ -358,6 +359,7 @@ export default function Page() {
   const prompt = usePrompt()
   const comments = useComments()
   const terminal = useTerminal()
+  const command = useCommand()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1665,6 +1667,13 @@ export default function Page() {
       if (input.manual) setFollowup("paused", input.sessionID, undefined)
       setFollowup("failed", input.sessionID, undefined)
 
+      if (item.commandId) {
+        command.trigger(item.commandId, "slash")
+        setFollowup("items", input.sessionID, (items) => (items ?? []).filter((entry) => entry.id !== input.id))
+        if (input.manual) owner.run(resumeScroll)
+        return
+      }
+
       const ok = await sendFollowupDraft({
         client: sdk().client,
         sync: sync(),
@@ -1734,6 +1743,24 @@ export default function Page() {
     setFollowup("failed", draft.sessionID, undefined)
     setFollowup("paused", draft.sessionID, undefined)
     setFollowup("editing", draft.sessionID, undefined)
+  }
+
+  const queueCommand = (commandId: string, title: string) => {
+    const sessionID = params.id
+    if (!sessionID) return
+    const currentModel = local.model.current()
+    const currentAgent = local.agent.current()
+    queueFollowup({
+      sessionID,
+      sessionDirectory: sdk().directory,
+      prompt: [{ type: "text", content: title, start: 0, end: title.length }],
+      context: [],
+      agent: currentAgent?.name ?? "",
+      model: currentModel
+        ? { providerID: currentModel.provider.id, modelID: currentModel.id }
+        : { providerID: "", modelID: "" },
+      commandId,
+    })
   }
 
   const removeFollowup = (id: string) => {
@@ -2039,6 +2066,7 @@ export default function Page() {
             onEditLoaded={clearFollowupEdit}
             shouldQueue={queueEnabled}
             onQueue={queueFollowup}
+            onQueueCommand={queueCommand}
             onAbort={() => {
               const id = params.id
               if (!id) return

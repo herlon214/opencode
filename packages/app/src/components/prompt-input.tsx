@@ -170,6 +170,7 @@ export interface PromptInputProps {
   onEditLoaded?: () => void
   shouldQueue?: () => boolean
   onQueue?: (draft: FollowupDraft) => void
+  onQueueCommand?: (commandId: string, title: string) => void
   onAbort?: () => void
   onSubmit?: () => void
   toolbar?: JSX.Element
@@ -800,7 +801,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return [...custom, ...builtin]
   })
 
-  const handleSlashSelect = (cmd: SlashCommand | undefined) => {
+  const handleSlashSelect = (cmd: SlashCommand | undefined, options?: { queue?: boolean }) => {
     if (!cmd) return
     closePopover()
     const images = imageAttachments()
@@ -810,6 +811,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       setEditorText(text)
       prompt.set([{ type: "text", content: text, start: 0, end: text.length }, ...images], text.length)
       focusEditorEnd()
+      return
+    }
+
+    if (options?.queue && working() && props.onQueueCommand) {
+      props.onQueueCommand(cmd.id, cmd.title)
+      clearEditor()
+      prompt.set([...DEFAULT_PROMPT, ...images], 0)
       return
     }
 
@@ -828,7 +836,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     items: slashCommands,
     key: (x) => x?.id,
     filterKeys: ["trigger", "title"],
-    onSelect: handleSlashSelect,
+    onSelect: (cmd) => handleSlashSelect(cmd),
   })
 
   const createPill = (part: FileAttachmentPart | AgentPart) => {
@@ -899,23 +907,26 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       element?.scrollIntoView({ block: "nearest", behavior: "smooth" })
     })
   }
-  const selectPopoverActive = () => {
+  const selectPopoverActive = (options?: { queue?: boolean }) => {
     if (store.popover === "at") {
       const items = atFlat()
-      if (items.length === 0) return
+      if (items.length === 0) return false
       const active = atActive()
       const item = items.find((entry) => atKey(entry) === active) ?? items[0]
       handleAtSelect(item)
-      return
+      return true
     }
 
     if (store.popover === "slash") {
       const items = slashFlat()
-      if (items.length === 0) return
+      if (items.length === 0) return false
       const active = slashActive()
       const item = items.find((entry) => entry.id === active) ?? items[0]
-      handleSlashSelect(item)
+      if (options?.queue && item.type === "custom") return false
+      handleSlashSelect(item, options)
+      return true
     }
+    return false
   }
 
   const reconcile = (input: Prompt) => {
@@ -1311,13 +1322,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const handleKeyDown = (event: KeyboardEvent) => {
     const hasSubmitContent = () =>
-      prompt
-        .current()
-        .map((part) => ("content" in part ? part.content : ""))
-        .join("")
-        .trim().length > 0 ||
-      imageAttachments().length > 0 ||
-      commentCount() > 0
+      promptText(prompt.current()).trim().length > 0 || imageAttachments().length > 0 || commentCount() > 0
 
     if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "u") {
       event.preventDefault()
@@ -1408,6 +1413,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (event.key === "Enter" && event.shiftKey && !event.altKey && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
       if (event.repeat) return
+      if (store.popover === "slash" && selectPopoverActive({ queue: true })) return
       if (working() && !hasSubmitContent()) return
       void handleSubmit(event, { queue: true })
       return

@@ -37,6 +37,7 @@ export type FollowupDraft = {
   agent: string
   model: { providerID: string; modelID: string }
   variant?: string
+  commandId?: string
 }
 
 type FollowupSendInput = {
