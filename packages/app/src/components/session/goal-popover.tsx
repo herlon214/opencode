@@ -21,7 +21,7 @@ function formatTokens(n: number) {
   return `${(n / 1000).toFixed(1)}K`
 }
 
-export function GoalPopover() {
+export function GoalPopover(props: { variant?: "dock"; class?: string }) {
   const language = useLanguage()
   const sync = useSync()
   const sdk = useSDK()
@@ -82,91 +82,102 @@ export function GoalPopover() {
     setEditing(false)
   }
 
+  const dock = createMemo(() => props.variant === "dock")
+
   return (
     <Show when={goal()}>
       {(g) => (
-        <Popover
-          open={shown()}
-          onOpenChange={(v) => {
-            setShown(v)
-            if (!v) setEditing(false)
-          }}
-          triggerAs={Button}
-          triggerProps={{
-            variant: "ghost",
-            class: "titlebar-icon h-6 px-2 box-border gap-1.5",
-            "aria-label": statusLabel(),
-          }}
-          trigger={
-            <>
-              <Icon name={statusIcon()} size="small" />
-              <span class="text-12-medium text-text-weak max-w-[120px] truncate">{g().objective}</span>
-            </>
-          }
-          class="[&_[data-slot=popover-body]]:p-0 w-[320px] max-w-[calc(100vw-40px)] bg-transparent border-0 shadow-none rounded-xl"
-          gutter={4}
-          placement="bottom-end"
-        >
-          <Show when={shown()}>
-            <div class="w-[320px] rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)] p-4 flex flex-col gap-3">
-              <Show
-                when={editing()}
-                fallback={
-                  <>
-                    <div class="flex flex-col gap-1">
-                      <span class="text-12-medium text-text-weak">{statusLabel()}</span>
-                      <span class="text-14-regular text-text-strong">{g().objective}</span>
-                    </div>
-                    <div class="flex items-center gap-3 text-12-regular text-text-weak">
-                      <span>{formatTime(g().time_used)}</span>
-                      <span>{formatTokens(g().tokens_used)} tokens</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <Button variant="ghost" size="small" onClick={startEdit}>
-                        {language.t("session.goal.edit")}
-                      </Button>
-                      <Show
-                        when={g().status === "active"}
-                        fallback={
-                          <Show when={g().status === "paused" || g().status === "blocked"}>
-                            <Button variant="ghost" size="small" onClick={handleResume}>
-                              {language.t("session.goal.resume")}
-                            </Button>
-                          </Show>
-                        }
-                      >
-                        <Button variant="ghost" size="small" onClick={handlePause}>
-                          {language.t("session.goal.pause")}
+        <div class={props.class}>
+          <Popover
+            open={shown()}
+            onOpenChange={(v) => {
+              setShown(v)
+              if (!v) setEditing(false)
+            }}
+            triggerAs={Button}
+            triggerProps={{
+              variant: "ghost",
+              class: dock()
+                ? "h-7 max-w-full px-2 box-border gap-1.5 rounded-md border border-border-weak-base bg-background-base shadow-none"
+                : "titlebar-icon h-6 px-2 box-border gap-1.5",
+              "aria-label": statusLabel(),
+            }}
+            trigger={
+              <>
+                <Icon name={statusIcon()} size="small" />
+                <span
+                  class="text-12-medium text-text-weak truncate"
+                  classList={{ "max-w-[260px]": dock(), "max-w-[120px]": !dock() }}
+                >
+                  {g().objective}
+                </span>
+              </>
+            }
+            class="[&_[data-slot=popover-body]]:p-0 w-[320px] max-w-[calc(100vw-40px)] bg-transparent border-0 shadow-none rounded-xl"
+            gutter={dock() ? 6 : 4}
+            placement={dock() ? "top-start" : "bottom-end"}
+          >
+            <Show when={shown()}>
+              <div class="w-[320px] rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)] p-4 flex flex-col gap-3">
+                <Show
+                  when={editing()}
+                  fallback={
+                    <>
+                      <div class="flex flex-col gap-1">
+                        <span class="text-12-medium text-text-weak">{statusLabel()}</span>
+                        <span class="text-14-regular text-text-strong">{g().objective}</span>
+                      </div>
+                      <div class="flex items-center gap-3 text-12-regular text-text-weak">
+                        <span>{formatTime(g().time_used)}</span>
+                        <span>{formatTokens(g().tokens_used)} tokens</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <Button variant="ghost" size="small" onClick={startEdit}>
+                          {language.t("session.goal.edit")}
                         </Button>
-                      </Show>
-                      <Button variant="ghost" size="small" onClick={handleClear}>
-                        {language.t("session.goal.clear")}
+                        <Show
+                          when={g().status === "active"}
+                          fallback={
+                            <Show when={g().status === "paused" || g().status === "blocked"}>
+                              <Button variant="ghost" size="small" onClick={handleResume}>
+                                {language.t("session.goal.resume")}
+                              </Button>
+                            </Show>
+                          }
+                        >
+                          <Button variant="ghost" size="small" onClick={handlePause}>
+                            {language.t("session.goal.pause")}
+                          </Button>
+                        </Show>
+                        <Button variant="ghost" size="small" onClick={handleClear}>
+                          {language.t("session.goal.clear")}
+                        </Button>
+                      </div>
+                    </>
+                  }
+                >
+                  <div class="flex flex-col gap-2">
+                    <textarea
+                      class="w-full rounded-lg bg-background-bg-base border border-border-weak-base p-2 text-14-regular text-text-strong resize-none focus:outline-none focus:border-border-active-base"
+                      rows={3}
+                      value={draft()}
+                      onInput={(e) => setDraft(e.currentTarget.value)}
+                      placeholder="Goal objective..."
+                    />
+                    <div class="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="small" onClick={() => setEditing(false)}>
+                        {language.t("session.goal.cancel")}
+                      </Button>
+                      <Button variant="primary" size="small" onClick={handleSave} disabled={!draft().trim()}>
+                        {language.t("session.goal.save")}
                       </Button>
                     </div>
-                  </>
-                }
-              >
-                <div class="flex flex-col gap-2">
-                  <textarea
-                    class="w-full rounded-lg bg-background-bg-base border border-border-weak-base p-2 text-14-regular text-text-strong resize-none focus:outline-none focus:border-border-active-base"
-                    rows={3}
-                    value={draft()}
-                    onInput={(e) => setDraft(e.currentTarget.value)}
-                    placeholder="Goal objective..."
-                  />
-                  <div class="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="small" onClick={() => setEditing(false)}>
-                      {language.t("session.goal.cancel")}
-                    </Button>
-                    <Button variant="primary" size="small" onClick={handleSave} disabled={!draft().trim()}>
-                      {language.t("session.goal.save")}
-                    </Button>
                   </div>
-                </div>
-              </Show>
-            </div>
-          </Show>
-        </Popover>
+                </Show>
+              </div>
+            </Show>
+          </Popover>
+        </div>
       )}
     </Show>
   )

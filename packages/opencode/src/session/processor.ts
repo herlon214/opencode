@@ -10,6 +10,7 @@ import { Permission } from "@/permission"
 import { Plugin } from "@/plugin"
 import { Snapshot } from "@/snapshot"
 import { Session } from "./session"
+import { SessionGoal } from "./goal"
 import { LLM } from "./llm"
 import { MessageV2 } from "./message-v2"
 import { isOverflow } from "./overflow"
@@ -72,6 +73,8 @@ interface ProcessorContext extends Input {
   needsCompaction: boolean
   currentText: SessionV1.TextPart | undefined
   reasoningMap: Record<string, SessionV1.ReasoningPart>
+  stepStartedAt: number | undefined
+  goalActiveAtStepStart: boolean | undefined
 }
 
 type StreamEvent = LLMEvent
@@ -89,6 +92,7 @@ const layer = Layer.effect(
     const permission = yield* Permission.Service
     const plugin = yield* Plugin.Service
     const summary = yield* SessionSummary.Service
+    const goal = yield* SessionGoal.Service
     const scope = yield* Scope.Scope
     const status = yield* SessionStatus.Service
     const image = yield* Image.Service
@@ -111,6 +115,8 @@ const layer = Layer.effect(
         needsCompaction: false,
         currentText: undefined,
         reasoningMap: {},
+        stepStartedAt: undefined,
+        goalActiveAtStepStart: undefined,
       }
       let aborted = false
 
@@ -420,6 +426,8 @@ const layer = Layer.effect(
             throw new Error(value.message)
 
           case "step-start":
+            ctx.stepStartedAt = Date.now()
+            ctx.goalActiveAtStepStart = (yield* goal.get(ctx.sessionID))?.status === "active"
             if (!ctx.snapshot) ctx.snapshot = yield* snapshot.track()
             yield* session.updatePart({
               id: PartID.ascending(),
@@ -431,6 +439,7 @@ const layer = Layer.effect(
             return
 
           case "step-finish": {
+            const completed = Date.now()
             const completedSnapshot = yield* snapshot.track()
             yield* Effect.forEach(Object.keys(ctx.reasoningMap), finishReasoning)
             const usage = Session.getUsage({
@@ -452,6 +461,19 @@ const layer = Layer.effect(
               cost: usage.cost,
             })
             yield* session.updateMessage(ctx.assistantMessage)
+            if (ctx.goalActiveAtStepStart) {
+              yield* goal.accountTime(ctx.sessionID, Math.max(0, completed - (ctx.stepStartedAt ?? completed)))
+              yield* goal.accountTokens(
+                ctx.sessionID,
+                usage.tokens.input +
+                  usage.tokens.output +
+                  usage.tokens.reasoning +
+                  usage.tokens.cache.read +
+                  usage.tokens.cache.write,
+              )
+            }
+            ctx.stepStartedAt = undefined
+            ctx.goalActiveAtStepStart = undefined
             if (ctx.snapshot) {
               const patch = yield* snapshot.patch(ctx.snapshot)
               if (patch.files.length) {
@@ -706,6 +728,7 @@ export const node = LayerNode.make({
     Permission.node,
     Plugin.node,
     SessionSummary.node,
+    SessionGoal.node,
     SessionStatus.node,
     Image.node,
     EventV2Bridge.node,
