@@ -1575,7 +1575,7 @@ export function MessageTimeline(props: {
         onClick={props.onAutoScrollInteraction}
         class="relative min-w-0 w-full h-full"
         style={{
-          "--sticky-accordion-top": showHeader() ? "64px" : "0px",
+          "--sticky-accordion-top": showHeader() ? (settings.general.newLayoutDesigns() ? "72px" : "64px") : "0px",
         }}
       >
         <Show when={showHeader()}>
@@ -1583,14 +1583,14 @@ export function MessageTimeline(props: {
             data-session-title
             classList={{
               "sticky top-0 z-30": true,
-              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_64px,transparent)]":
+              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_72px,transparent)]":
                 settings.general.newLayoutDesigns(),
               "bg-[linear-gradient(to_bottom,var(--background-stronger)_64px,transparent)]":
                 !settings.general.newLayoutDesigns(),
               "w-full": true,
               "pb-4": true,
               "pr-3": true,
-              "pl-2": settings.general.newLayoutDesigns(),
+              "pl-2 pt-2": settings.general.newLayoutDesigns(),
               "pl-2 md:pl-4": !settings.general.newLayoutDesigns(),
               "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered && !settings.general.newLayoutDesigns(),
             }}
@@ -1629,7 +1629,7 @@ export function MessageTimeline(props: {
                           data-slot="session-title-child"
                           classList={{
                             "truncate text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base": true,
-                            "w-fit rounded-[6px] px-2 py-1 hover:bg-v2-overlay-simple-overlay-hover":
+                            "w-fit rounded-[6px] px-1 py-1 hover:bg-v2-overlay-simple-overlay-hover":
                               settings.general.newLayoutDesigns(),
                             "grow-1 min-w-0": !settings.general.newLayoutDesigns(),
                           }}
@@ -1649,7 +1649,7 @@ export function MessageTimeline(props: {
                         classList={{
                           "block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base": true,
                           "w-full flex-1 grow-1 min-w-0 pl-1 -ml-1 rounded-[6px]": !settings.general.newLayoutDesigns(),
-                          "field-sizing-content self-start rounded-[6px] px-2 py-1 ":
+                          "field-sizing-content self-start rounded-[6px] px-1 py-1 ":
                             settings.general.newLayoutDesigns(),
                         }}
                         style={{
@@ -1678,7 +1678,11 @@ export function MessageTimeline(props: {
                 <Show when={projectName()}>
                   {(name) => (
                     <div
-                      class="truncate text-11-regular text-text-weaker leading-tight pl-2"
+                      class="truncate text-11-regular text-text-weaker leading-tight"
+                      classList={{
+                        "pl-1": settings.general.newLayoutDesigns(),
+                        "pl-2": !settings.general.newLayoutDesigns(),
+                      }}
                       data-slot="session-title-project"
                     >
                       {name()}
