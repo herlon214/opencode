@@ -847,7 +847,10 @@ function contextToolDetail(part: ToolPart): string | undefined {
   return undefined
 }
 
-function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
+function contextToolTrigger(
+  part: ToolPart,
+  i18n: ReturnType<typeof useI18n>,
+): { icon: IconProps["name"]; title: string; subtitle?: string; args?: string[] } {
   const input = (part.state.input ?? {}) as Record<string, unknown>
   const path = typeof input.path === "string" ? input.path : "/"
   const filePath = typeof input.filePath === "string" ? input.filePath : undefined
@@ -862,6 +865,7 @@ function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
       if (offset !== undefined) args.push("offset=" + offset)
       if (limit !== undefined) args.push("limit=" + limit)
       return {
+        icon: "glasses",
         title: i18n.t("ui.tool.read"),
         subtitle: filePath ? getFilename(filePath) : "",
         args,
@@ -869,11 +873,13 @@ function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
     }
     case "list":
       return {
+        icon: "bullet-list",
         title: i18n.t("ui.tool.list"),
         subtitle: getDirectory(path),
       }
     case "glob":
       return {
+        icon: "glob",
         title: i18n.t("ui.tool.glob"),
         subtitle: getDirectory(path),
         args: pattern ? ["pattern=" + pattern] : [],
@@ -883,6 +889,7 @@ function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
       if (pattern) args.push("pattern=" + pattern)
       if (include) args.push("include=" + include)
       return {
+        icon: "grep",
         title: i18n.t("ui.tool.grep"),
         subtitle: getDirectory(path),
         args,
@@ -891,6 +898,7 @@ function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
     default: {
       const info = getToolInfo(part.tool, input, "metadata" in part.state ? part.state.metadata : undefined)
       return {
+        icon: info.icon,
         title: info.title,
         subtitle: info.subtitle || contextToolDetail(part),
         args: [],
@@ -1127,6 +1135,11 @@ export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean; onS
                       <div data-slot="basic-tool-tool-info">
                         <div data-slot="basic-tool-tool-info-structured">
                           <div data-slot="basic-tool-tool-info-main">
+                            <span data-slot="basic-tool-tool-indicator">
+                              <Show when={running()} fallback={<Icon name={trigger().icon} size="small" class="tool-icon-weak" />}>
+                                <Spinner />
+                              </Show>
+                            </span>
                             <span data-slot="basic-tool-tool-title">
                               <TextShimmer text={trigger().title} active={running()} />
                             </span>
@@ -1896,6 +1909,11 @@ ToolRegistry.register({
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-indicator">
+                <Show when={pending()} fallback={<Icon name="webfetch" size="small" class="tool-icon-weak" />}>
+                  <Spinner />
+                </Show>
+              </span>
               <span data-slot="basic-tool-tool-title">
                 <TextShimmer text={i18n.t("ui.tool.webfetch")} active={pending()} />
               </span>
@@ -2000,11 +2018,11 @@ ToolRegistry.register({
       <div data-component="task-tool-card">
         <div data-slot="basic-tool-tool-info-structured">
           <div data-slot="basic-tool-tool-info-main">
-            <Show when={running()}>
-              <span data-component="task-tool-spinner" style={{ color: tone() ?? "var(--icon-interactive-base)" }}>
+            <span data-slot="basic-tool-tool-indicator" style={{ color: tone() ?? "var(--icon-interactive-base)" }}>
+              <Show when={running()} fallback={<Icon name="task" size="small" />}>
                 <Spinner />
-              </span>
-            </Show>
+              </Show>
+            </span>
             <span data-component="task-tool-title" style={{ color: tone() ?? "var(--text-strong)" }}>
               {title()}
             </span>
@@ -2160,6 +2178,11 @@ ToolRegistry.register({
           trigger={
             <div data-component="edit-trigger">
               <div data-slot="message-part-title-area">
+                <span data-slot="basic-tool-tool-indicator">
+                  <Show when={pending()} fallback={<Icon name="pencil" size="small" class="tool-icon-weak" />}>
+                    <Spinner />
+                  </Show>
+                </span>
                 <div data-slot="message-part-title">
                   <span data-slot="message-part-title-text">
                     <TextShimmer text={i18n.t("ui.messagePart.title.edit")} active={pending()} />
@@ -2227,6 +2250,11 @@ ToolRegistry.register({
           trigger={
             <div data-component="write-trigger">
               <div data-slot="message-part-title-area">
+                <span data-slot="basic-tool-tool-indicator">
+                  <Show when={pending()} fallback={<Icon name="file-plus" size="small" class="tool-icon-weak" />}>
+                    <Spinner />
+                  </Show>
+                </span>
                 <div data-slot="message-part-title">
                   <span data-slot="message-part-title-text">
                     <TextShimmer text={i18n.t("ui.messagePart.title.write")} active={pending()} />
@@ -2409,6 +2437,11 @@ ToolRegistry.register({
             trigger={
               <div data-component="edit-trigger">
                 <div data-slot="message-part-title-area">
+                  <span data-slot="basic-tool-tool-indicator">
+                    <Show when={pending()} fallback={<Icon name="files" size="small" class="tool-icon-weak" />}>
+                      <Spinner />
+                    </Show>
+                  </span>
                   <div data-slot="message-part-title">
                     <span data-slot="message-part-title-text">
                       <TextShimmer text={i18n.t("ui.tool.patch")} active={pending()} />
