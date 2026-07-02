@@ -62,6 +62,9 @@ export type State = {
   question: {
     [sessionID: string]: QuestionRequest[]
   }
+  block_start: {
+    [sessionID: string]: number | undefined
+  }
   mcp_ready: boolean
   mcp: {
     [name: string]: McpStatus

@@ -75,6 +75,7 @@ const baseState = (input: Partial<State> = {}) =>
     todo: {},
     permission: {},
     question: {},
+    block_start: {},
     mcp: {},
     lsp: [],
     vcs: undefined,

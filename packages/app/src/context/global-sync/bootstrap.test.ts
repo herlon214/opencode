@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { createStore } from "solid-js/store"
 import { QueryClient } from "@tanstack/solid-query"
-import type { Config, OpencodeClient, Project, Session } from "@opencode-ai/sdk/v2/client"
+import type { Config, OpencodeClient, PermissionRequest, Project, Session } from "@opencode-ai/sdk/v2/client"
 import type { NormalizedProviderListResponse } from "@opencode-ai/session-ui/context"
 import { bootstrapDirectory, loadPathQuery, loadProvidersQuery } from "./bootstrap"
 import type { State, VcsCache } from "./types"
@@ -33,6 +33,7 @@ function directoryState() {
     todo: {},
     permission: {},
     question: {},
+    block_start: {},
     mcp_ready: true,
     mcp: {},
     mcp_resource: {},
@@ -157,6 +158,63 @@ describe("bootstrapDirectory", () => {
 
     expect(session.data.session_status["ses_busy"]?.type).toBe("busy")
     expect(session.data.session_status[stale.id]).toBeUndefined()
+  })
+
+  test("clears stale block starts when bootstrap reloads empty requests", async () => {
+    const [store, setStore] = directoryState()
+    const client = {
+      app: { agents: async () => ({ data: [{ name: "build", mode: "primary" }] }) },
+      config: { get: async () => ({ data: {} }) },
+      session: { status: async () => ({ data: {} }) },
+      vcs: { get: async () => ({ data: undefined }) },
+      command: { list: async () => ({ data: [] }) },
+      permission: { list: async () => ({ data: [] }) },
+      question: { list: async () => ({ data: [] }) },
+      v2: { reference: { list: async () => ({ data: { data: [] } }) } },
+      mcp: { status: async () => ({ data: {} }) },
+      provider: { list: async () => ({ data: { all: [], connected: [], default: {} } }) },
+    } as unknown as OpencodeClient
+    const session = createServerSession(client)
+    const stale: Session = {
+      id: "ses_stale",
+      slug: "ses_stale",
+      projectID: "project",
+      directory: "/project",
+      title: "stale",
+      version: "1",
+      time: { created: 1, updated: 1 },
+    }
+    session.remember(stale)
+    session.set("permission", stale.id, [{ id: "perm_1", sessionID: stale.id } as PermissionRequest])
+    session.set("block_start", stale.id, 123)
+
+    await bootstrapDirectory({
+      directory: "/project",
+      scope: ServerScope.local,
+      mcp: false,
+      global: {
+        config: {} satisfies Config,
+        path: { state: "", config: "", worktree: "/project", directory: "/project", home: "/home" },
+        project: [{ id: "project", worktree: "/project" } as Project],
+        provider,
+      },
+      sdk: client,
+      store,
+      setStore,
+      vcsCache: { setStore() {} } as unknown as VcsCache,
+      loadSessions() {},
+      translate: (key) => key,
+      queryClient: new QueryClient(),
+      session,
+    })
+
+    const deadline = Date.now() + 500
+    while (session.data.block_start[stale.id] !== undefined && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+
+    expect(session.data.permission[stale.id]).toEqual([])
+    expect(session.data.block_start[stale.id]).toBeUndefined()
   })
 })
 

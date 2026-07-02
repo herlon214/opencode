@@ -14,6 +14,7 @@ const sessionFields = new Set([
   "todo",
   "permission",
   "question",
+  "block_start",
   "message",
   "part",
   "part_text_accum_delta",

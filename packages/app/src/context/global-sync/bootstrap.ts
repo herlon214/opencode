@@ -178,6 +178,47 @@ function warmSessions(input: {
   ).then(() => undefined)
 }
 
+function setBlockStart(
+  input: {
+    setStore: SetStoreFunction<State>
+    session?: ServerSession
+  },
+  sessionID: string,
+  value: number | undefined,
+) {
+  if (input.session) {
+    input.session.set("block_start", sessionID, value)
+    return
+  }
+  input.setStore("block_start", sessionID, value)
+}
+
+function syncBlockStart(input: {
+  directory: string
+  store: Store<State>
+  setStore: SetStoreFunction<State>
+  session?: ServerSession
+}) {
+  const data = input.session?.data ?? input.store
+  const sessionIDs = new Set([
+    ...Object.keys(data.block_start),
+    ...Object.keys(data.permission),
+    ...Object.keys(data.question),
+  ])
+  const now = Date.now()
+  batch(() => {
+    for (const sessionID of sessionIDs) {
+      if (input.session && input.session.get(sessionID)?.directory !== input.directory) continue
+      const blocked = (data.permission[sessionID]?.length ?? 0) > 0 || (data.question[sessionID]?.length ?? 0) > 0
+      if (blocked) {
+        if (data.block_start[sessionID] === undefined) setBlockStart(input, sessionID, now)
+        continue
+      }
+      if (data.block_start[sessionID] !== undefined) setBlockStart(input, sessionID, undefined)
+    }
+  })
+}
+
 export const loadProvidersQuery = (scope: ServerScope, directory: string | null, sdk: OpencodeClient) =>
   queryOptions({
     queryKey: [scope, directory, "providers"],
@@ -365,7 +406,9 @@ export async function bootstrapDirectory(input: {
     ].filter(Boolean) as (() => Promise<any>)[]
 
     await waitForPaint()
-    const slowErrs = errors(await runAll(slow))
+    const slowResults = await runAll(slow)
+    syncBlockStart(input)
+    const slowErrs = errors(slowResults)
     if (slowErrs.length > 0) {
       console.error("Failed to finish bootstrap instance", slowErrs[0])
       const project = getFilename(input.directory)

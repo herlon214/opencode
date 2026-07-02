@@ -66,6 +66,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useServerSDK } from "@/context/server-sdk"
+import { usePermission } from "@/context/permission"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { useTabs } from "@/context/tabs"
@@ -75,6 +76,7 @@ import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { sessionTitle } from "@/utils/session-title"
 import { displayName } from "@/pages/layout/helpers"
+import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
 import { scheduleConnectedMeasure } from "./measure"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
@@ -277,6 +279,7 @@ export function MessageTimeline(props: {
   const serverSDK = useServerSDK()
   const sdk = useSDK()
   const sync = useSync()
+  const permission = usePermission()
   const settings = useSettings()
   const tabs = useTabs()
   const dialog = useDialog()
@@ -1148,11 +1151,48 @@ export function MessageTimeline(props: {
     })
 
     const [tick, setTick] = createSignal(Date.now())
+    // The turn is "blocked" when it is waiting on the user (a permission that
+    // needs approval or an open question). The working timer pauses during
+    // those waits since no active work is happening.
+    const blocked = createMemo(() => {
+      const id = sessionID()
+      if (!id) return false
+      const data = sync().data
+      const directory = sdk().directory
+      const perm = sessionPermissionRequest(
+        data.session,
+        data.permission,
+        id,
+        (item) => !permission.autoResponds(item, directory),
+      )
+      const question = sessionQuestionRequest(data.session, data.question, id)
+      return !!perm || !!question
+    })
+    const [blockedSince, setBlockedSince] = createSignal<number | undefined>(undefined)
+    const [blockedMs, setBlockedMs] = createSignal(0)
+    createEffect(
+      on(blocked, (isBlocked) => {
+        const since = blockedSince()
+        if (isBlocked) {
+          if (since === undefined) {
+            const stored = sessionID() ? sync().data.block_start[sessionID()!] : undefined
+            setBlockedSince(stored ?? Date.now())
+          }
+        } else if (since !== undefined) {
+          setBlockedMs((n) => n + (Date.now() - since))
+          setBlockedSince(undefined)
+        }
+      }),
+    )
     const workingElapsed = createMemo(() => {
       if (!active() || !tick()) return undefined
       const message = messageByID().get(props.row().userMessageID)
       if (!message || message.role !== "user") return undefined
-      return formatDuration(Math.max(0, tick() - message.time.created))
+      const now = tick()
+      let deduction = blockedMs()
+      const since = blockedSince()
+      if (since !== undefined) deduction += now - since
+      return formatDuration(Math.max(0, now - message.time.created - deduction))
     })
 
     createEffect(

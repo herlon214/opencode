@@ -138,6 +138,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
     todo: {} as Record<string, Todo[]>,
     permission: {} as Record<string, PermissionRequest[]>,
     question: {} as Record<string, QuestionRequest[]>,
+    block_start: {} as Record<string, number | undefined>,
     message: {} as Record<string, Message[]>,
     part: {} as Record<string, Part[]>,
     part_text_accum_delta: {} as Record<string, string>,
@@ -908,20 +909,24 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         const permissions = data.permission[permission.sessionID]
         if (!permissions) {
           setData("permission", permission.sessionID, [permission])
-          return
+        } else {
+          const result = Binary.search(permissions, permission.id, (item) => item.id)
+          if (result.found) setData("permission", permission.sessionID, result.index, reconcile(permission))
+          if (!result.found)
+            setData(
+              "permission",
+              permission.sessionID,
+              produce((draft) => void draft.splice(result.index, 0, permission)),
+            )
         }
-        const result = Binary.search(permissions, permission.id, (item) => item.id)
-        if (result.found) setData("permission", permission.sessionID, result.index, reconcile(permission))
-        if (!result.found)
-          setData(
-            "permission",
-            permission.sessionID,
-            produce((draft) => void draft.splice(result.index, 0, permission)),
-          )
+        if (data.block_start[permission.sessionID] === undefined)
+          setData("block_start", permission.sessionID, Date.now())
         return
       }
       case "permission.replied": {
         const props = event.properties as { sessionID: string; requestID: string }
+        const permissions = data.permission[props.sessionID]
+        const found = permissions ? Binary.search(permissions, props.requestID, (item) => item.id).found : false
         setData(
           "permission",
           props.sessionID,
@@ -931,6 +936,9 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
             if (result.found) draft.splice(result.index, 1)
           }),
         )
+        const remaining = (permissions?.length ?? 0) - (found ? 1 : 0)
+        if (remaining === 0 && (data.question[props.sessionID]?.length ?? 0) === 0)
+          setData("block_start", props.sessionID, undefined)
         return
       }
       case "question.asked": {
@@ -938,21 +946,25 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         const questions = data.question[question.sessionID]
         if (!questions) {
           setData("question", question.sessionID, [question])
-          return
+        } else {
+          const result = Binary.search(questions, question.id, (item) => item.id)
+          if (result.found) setData("question", question.sessionID, result.index, reconcile(question))
+          if (!result.found)
+            setData(
+              "question",
+              question.sessionID,
+              produce((draft) => void draft.splice(result.index, 0, question)),
+            )
         }
-        const result = Binary.search(questions, question.id, (item) => item.id)
-        if (result.found) setData("question", question.sessionID, result.index, reconcile(question))
-        if (!result.found)
-          setData(
-            "question",
-            question.sessionID,
-            produce((draft) => void draft.splice(result.index, 0, question)),
-          )
+        if (data.block_start[question.sessionID] === undefined)
+          setData("block_start", question.sessionID, Date.now())
         return
       }
       case "question.replied":
       case "question.rejected": {
         const props = event.properties as { sessionID: string; requestID: string }
+        const questions = data.question[props.sessionID]
+        const found = questions ? Binary.search(questions, props.requestID, (item) => item.id).found : false
         setData(
           "question",
           props.sessionID,
@@ -962,6 +974,9 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
             if (result.found) draft.splice(result.index, 1)
           }),
         )
+        const remaining = (questions?.length ?? 0) - (found ? 1 : 0)
+        if (remaining === 0 && (data.permission[props.sessionID]?.length ?? 0) === 0)
+          setData("block_start", props.sessionID, undefined)
       }
     }
   }
