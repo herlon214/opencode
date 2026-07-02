@@ -43,7 +43,7 @@ import { DialogFooter, DialogHeader, DialogTitleGroup, DialogV2 } from "@opencod
 import { InlineInput } from "@opencode-ai/ui/inline-input"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { SessionRetry } from "@opencode-ai/session-ui/session-retry"
-import { ScrollView } from "@opencode-ai/ui/scroll-view"
+import { isScrollKeyTarget, scrollKey, scrollKeyOwner, ScrollView } from "@opencode-ai/ui/scroll-view"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { TextField } from "@opencode-ai/ui/text-field"
@@ -74,6 +74,7 @@ import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { sessionTitle } from "@/utils/session-title"
+import { displayName } from "@/pages/layout/helpers"
 import { scheduleConnectedMeasure } from "./measure"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
@@ -334,6 +335,11 @@ export function MessageTimeline(props: {
     if (value) return value
     return language.t("command.session.new")
   })
+  const projectName = createMemo(() => {
+    const session = info()
+    if (!session) return
+    return displayName({ worktree: session.directory, name: sync().project?.name })
+  })
   const showHeader = createMemo(() => props.showHeader !== false && !!(titleValue() || parentID()))
   const projection = createTimelineProjection({
     messages: sessionMessages,
@@ -443,7 +449,7 @@ export function MessageTimeline(props: {
     followOnAppend: true,
     scrollEndThreshold: 80,
     get scrollMargin() {
-      return showHeader() ? 64 : 0
+      return showHeader() ? 80 : 0
     },
     overscan: 50,
     paddingEnd: 64,
@@ -458,6 +464,16 @@ export function MessageTimeline(props: {
     },
   })
   const resizeItem = virtualizer.resizeItem
+  let resizeAnchorScheduled = false
+  const anchorResizedBottom = () => {
+    if (resizeAnchorScheduled || props.hasScrollGesture()) return
+    resizeAnchorScheduled = true
+    queueMicrotask(() => {
+      resizeAnchorScheduled = false
+      if (!props.shouldAnchorBottom() || props.hasScrollGesture()) return
+      virtualizer.scrollToEnd()
+    })
+  }
   virtualizer.resizeItem = (index, size) => {
     const item = virtualizer.measurementsCache[index]
     const previous = item ? (virtualizer.itemSizeCache.get(item.key) ?? item.size) : undefined
@@ -479,9 +495,13 @@ export function MessageTimeline(props: {
       })
     }
     resizeItem(index, size)
+    if (root && props.shouldAnchorBottom()) anchorResizedBottom()
   }
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) =>
-    item.end <= instance.getLogicalScrollOffset()
+  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item) => {
+    if (props.shouldAnchorBottom()) return false
+    const first = virtualizer.range?.startIndex
+    return first !== undefined && item.index < first
+  }
   const virtualItemByKey = createMemo(
     () => new Map(virtualizer.getVirtualItems().map((item) => [item.key, item] as const)),
   )
@@ -515,9 +535,8 @@ export function MessageTimeline(props: {
     const key = timelineSessionKey()
     if (bottomAnchorSessionKey === key) return
     if (timelineRows().length === 0) return
+    if (!props.shouldAnchorBottom() || props.hasScrollGesture()) return
     bottomAnchorSessionKey = key
-    if (!props.shouldAnchorBottom()) return
-    if (bottomAnchorFrame !== undefined) cancelAnimationFrame(bottomAnchorFrame)
     if (resizePinFrame !== undefined) cancelAnimationFrame(resizePinFrame)
     clearPrependAnchor()
     if (prependAnchorFrame !== undefined) cancelAnimationFrame(prependAnchorFrame)
@@ -544,7 +563,6 @@ export function MessageTimeline(props: {
     timelineCache.delete(ownerSessionKey)
     timelineCache.set(ownerSessionKey, { measurements: virtualizer.takeSnapshot(), toolOpen: { ...toolOpen } })
     while (timelineCache.size > 16) timelineCache.delete(timelineCache.keys().next().value!)
-    if (bottomAnchorFrame !== undefined) cancelAnimationFrame(bottomAnchorFrame)
     if (resizePinFrame !== undefined) cancelAnimationFrame(resizePinFrame)
     if (overscanFrame !== undefined) cancelAnimationFrame(overscanFrame)
     props.setRevealMessage?.(() => {})
@@ -614,6 +632,15 @@ export function MessageTimeline(props: {
   const handleListPointerDown = (event: PointerEvent & { currentTarget: HTMLDivElement }) => {
     if (!prependLoading) clearPrependAnchor()
     if (event.target !== event.currentTarget) return
+    props.onMarkScrollGesture(event.currentTarget)
+  }
+
+  const handleListKeyDown = (event: KeyboardEvent & { currentTarget: HTMLDivElement }) => {
+    const key = scrollKey(event)
+    if (!key) return
+    if (!isScrollKeyTarget(event.target, key)) return
+    if (scrollKeyOwner(event.currentTarget, event.target, key) !== event.currentTarget) return
+    if (!prependLoading) clearPrependAnchor()
     props.onMarkScrollGesture(event.currentTarget)
   }
 
@@ -998,65 +1025,68 @@ export function MessageTimeline(props: {
     userMessageID: Accessor<string>,
     onSizeChange?: () => void,
   ) {
+    if (group().type === "context") {
+      const parts = createMemo(() => {
+        const g = group()
+        if (g.type !== "context") return emptyTools
+        return g.refs
+          .map((ref) => getMsgPart(ref.messageID, ref.partID))
+          .filter((part): part is ToolPart => part?.type === "tool")
+      })
+      const contextOpenKey = () => `context:${group().key}`
+      const open = createMemo(() => toolOpen[contextOpenKey()] === true)
+
+      return (
+        <ContextToolGroup
+          parts={parts()}
+          open={open()}
+          onOpenChange={(value) => setToolOpen(contextOpenKey(), value)}
+          busy={workingTurn(userMessageID()) && lastAssistantGroupKey().get(userMessageID()) === group().key}
+          onSizeChange={onSizeChange}
+        />
+      )
+    }
+
+    const message = createMemo(() => {
+      const g = group()
+      if (g.type !== "part") return
+      return messageByID().get(g.ref.messageID)
+    })
+    const part = createMemo(() => {
+      const g = group()
+      if (g.type !== "part") return
+      return getMsgPart(g.ref.messageID, g.ref.partID)
+    })
+    const defaultOpen = createMemo(() => {
+      const item = part()
+      if (!item) return
+      return partDefaultOpen(item, settings.general.shellToolPartsExpanded(), settings.general.editToolPartsExpanded())
+    })
     return (
-      <Switch
-        fallback={
-          <Show when={messageForGroup(group())}>
-            {(message) => (
-              <Show when={partForGroup(group())}>
-                {(part) => (
-                  <MessagePart
-                    part={part()}
-                    message={message()}
-                    showAssistantCopyPartID={assistantCopyPartID(userMessageID())}
-                    turnDurationMs={turnDurationMs(userMessageID())}
-                    turnOutputTokens={turnOutputTokens(userMessageID())}
-                    useV2Actions={settings.general.newLayoutDesigns()}
-                    showReasoningSummaries={settings.general.showReasoningSummaries()}
-                    defaultOpen={defaultOpenForPart(part())}
-                    toolOpen={toolOpen[part().id] ?? defaultOpenForPart(part())}
-                    onToolOpenChange={(open) => setToolOpen(part().id, open)}
-                    deferToolContent
-                    virtualizeDiff={false}
-                    onContentRendered={onSizeChange}
-                  />
-                )}
-              </Show>
+      <Show when={message()}>
+        {(message) => (
+          <Show when={part()}>
+            {(part) => (
+              <MessagePart
+                part={part()}
+                message={message()}
+                showAssistantCopyPartID={assistantCopyPartID(userMessageID())}
+                turnDurationMs={turnDurationMs(userMessageID())}
+                turnOutputTokens={turnOutputTokens(userMessageID())}
+                useV2Actions={settings.general.newLayoutDesigns()}
+                showReasoningSummaries={settings.general.showReasoningSummaries()}
+                defaultOpen={defaultOpen()}
+                toolOpen={toolOpen[part().id] ?? defaultOpen()}
+                onToolOpenChange={(open) => setToolOpen(part().id, open)}
+                deferToolContent
+                virtualizeDiff={false}
+                onContentRendered={onSizeChange}
+              />
             )}
           </Show>
-        }
-      >
-        <Match when={group().type === "context"}>
-          <ContextToolGroup
-            parts={contextParts(group())}
-            busy={workingTurn(userMessageID()) && lastAssistantGroupKey().get(userMessageID()) === group().key}
-            onSizeChange={onSizeChange}
-          />
-        </Match>
-      </Switch>
+        )}
+      </Show>
     )
-  }
-
-  function messageForGroup(group: PartGroup) {
-    if (group.type !== "part") return
-    return messageByID().get(group.ref.messageID)
-  }
-
-  function partForGroup(group: PartGroup) {
-    if (group.type !== "part") return
-    return getMsgPart(group.ref.messageID, group.ref.partID)
-  }
-
-  function contextParts(group: PartGroup): ToolPart[] {
-    if (group.type !== "context") return emptyTools
-    return group.refs
-      .map((ref) => getMsgPart(ref.messageID, ref.partID))
-      .filter((part): part is ToolPart => part?.type === "tool")
-  }
-
-  function defaultOpenForPart(part: PartType | undefined) {
-    if (!part) return
-    return partDefaultOpen(part, settings.general.shellToolPartsExpanded(), settings.general.editToolPartsExpanded())
   }
 
   const renderAssistantPartGroup = (row: Accessor<TimelineRowMap["AssistantPart"]>, onSizeChange?: () => void) =>
@@ -1451,7 +1481,7 @@ export function MessageTimeline(props: {
         data-timeline-key={props.rowKey}
         style={{
           position: "absolute",
-          top: `${item().start - (showHeader() ? 64 : 0)}px`,
+          top: `${item().start - (showHeader() ? 80 : 0)}px`,
           left: "0",
           width: "100%",
           height: `${item().size}px`,
@@ -1540,11 +1570,12 @@ export function MessageTimeline(props: {
         onTouchEnd={handleListTouchEnd}
         onTouchCancel={handleListTouchEnd}
         onPointerDown={handleListPointerDown}
+        onKeyDown={handleListKeyDown}
         onScroll={handleListScroll}
         onClick={props.onAutoScrollInteraction}
         class="relative min-w-0 w-full h-full"
         style={{
-          "--sticky-accordion-top": showHeader() ? "48px" : "0px",
+          "--sticky-accordion-top": showHeader() ? "64px" : "0px",
         }}
       >
         <Show when={showHeader()}>
@@ -1552,9 +1583,9 @@ export function MessageTimeline(props: {
             data-session-title
             classList={{
               "sticky top-0 z-30": true,
-              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_48px,transparent)]":
+              "bg-[linear-gradient(to_bottom,var(--v2-background-bg-base)_64px,transparent)]":
                 settings.general.newLayoutDesigns(),
-              "bg-[linear-gradient(to_bottom,var(--background-stronger)_48px,transparent)]":
+              "bg-[linear-gradient(to_bottom,var(--background-stronger)_64px,transparent)]":
                 !settings.general.newLayoutDesigns(),
               "w-full": true,
               "pb-4": true,
@@ -1564,14 +1595,15 @@ export function MessageTimeline(props: {
               "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered && !settings.general.newLayoutDesigns(),
             }}
           >
-            <div class="h-12 w-full flex items-center justify-between gap-2">
+            <div class="min-h-12 w-full flex items-center justify-between gap-2">
               <div
                 classList={{
-                  "flex items-center gap-1 min-w-0 flex-1": true,
+                  "flex flex-col justify-center min-w-0 flex-1": true,
+                  "gap-0.5": settings.general.newLayoutDesigns(),
                   "pr-3": !settings.general.newLayoutDesigns(),
                 }}
               >
-                <div class="flex items-center min-w-0 flex-1 w-full">
+                <div class="flex items-center min-w-0 w-full">
                   <Show when={parentID()}>
                     <button
                       type="button"
@@ -1643,6 +1675,16 @@ export function MessageTimeline(props: {
                     </Show>
                   </Show>
                 </div>
+                <Show when={projectName()}>
+                  {(name) => (
+                    <div
+                      class="truncate text-11-regular text-text-weaker leading-tight pl-2"
+                      data-slot="session-title-project"
+                    >
+                      {name()}
+                    </div>
+                  )}
+                </Show>
               </div>
               <Show when={sessionID()} keyed>
                 {(id) => (
