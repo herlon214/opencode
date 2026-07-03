@@ -71,6 +71,7 @@ import { showToast } from "@/utils/toast"
 import { UsagePanel } from "@/components/usage/usage-panel"
 
 const HOME_SESSION_LIMIT = 64
+const HOME_SESSION_LOAD_BATCH_SIZE = 4
 const HOME_SESSION_HEADER_STICKY_TOP = 12
 const HOME_SESSION_HEADER_TEXT_HEIGHT = 16
 const HOME_SESSION_HEADER_FADE_DISTANCE = 16
@@ -137,6 +138,27 @@ function matchesHomeSessionSearch(record: HomeSessionRecord, query: string) {
 
 function homeSessionSearchKey(record: HomeSessionRecord) {
   return `${pathKey(record.session.directory)}:${record.session.id}`
+}
+
+function waitForHomeSessionBatchPaint() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      setTimeout(resolve, 0)
+      return
+    }
+    requestAnimationFrame(() => setTimeout(resolve, 0))
+  })
+}
+
+async function loadHomeSessions(input: { sync: ServerSync; directories: string[] }) {
+  for (let index = 0; index < input.directories.length; index += HOME_SESSION_LOAD_BATCH_SIZE) {
+    if (index > 0) await waitForHomeSessionBatchPaint()
+    await Promise.all(
+      input.directories
+        .slice(index, index + HOME_SESSION_LOAD_BATCH_SIZE)
+        .map((directory) => input.sync.project.loadSessions(directory, { limit: HOME_SESSION_LIMIT })),
+    )
+  }
 }
 
 function useHomeSessionHeaderOpacity(groups: () => HomeSessionGroup[]) {
@@ -303,11 +325,7 @@ export function NewHome() {
   const sessionLoad = useQuery(() => ({
     queryKey: ["home", "sessions", selection().server, ...projectDirectories()] as const,
     queryFn: async () => {
-      await Promise.all(
-        projectDirectories().map((directory) =>
-          focusedSync().project.loadSessions(directory, { limit: HOME_SESSION_LIMIT }),
-        ),
-      )
+      await loadHomeSessions({ sync: focusedSync(), directories: projectDirectories() })
       return null
     },
   }))
@@ -316,12 +334,14 @@ export function NewHome() {
     () => new Map(projects().flatMap((project) => (project.id ? [[project.id, project] as const] : []))),
   )
   const allRecords = createMemo(() =>
-    buildHomeSessionRecords({
-      sync: focusedSync(),
-      projectDirectories,
-      projects,
-      projectByID,
-    }),
+    sessionLoad.isLoading
+      ? []
+      : buildHomeSessionRecords({
+          sync: focusedSync(),
+          projectDirectories,
+          projects,
+          projectByID,
+        }),
   )
   const records = createMemo(() => allRecords().slice(0, HOME_SESSION_LIMIT))
   const recentRecords = createMemo(() => (showUsageDashboard() ? records().slice(0, 5) : []))
@@ -583,7 +603,11 @@ export function NewHome() {
                 fallback={
                   <div class="flex flex-col gap-4 pt-3 pr-3 pb-16">
                     <Show when={showUsageDashboard()}>
-                      <UsagePanel server={focusedServer()} directories={projectDirectories()} />
+                      <UsagePanel
+                        server={focusedServer()}
+                        directories={projectDirectories()}
+                        sessions={records().map((record) => record.session)}
+                      />
                     </Show>
                     <HomeSessionsEmpty onNewSession={newSessionProject() ? openNewSession : undefined} />
                   </div>
@@ -622,7 +646,11 @@ export function NewHome() {
                   </Show>
 
                   <Show when={showUsageDashboard()}>
-                    <UsagePanel server={focusedServer()} directories={projectDirectories()} />
+                    <UsagePanel
+                      server={focusedServer()}
+                      directories={projectDirectories()}
+                      sessions={records().map((record) => record.session)}
+                    />
                   </Show>
 
                   <Show when={groups().length > 0}>

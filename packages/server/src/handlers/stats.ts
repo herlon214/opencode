@@ -14,7 +14,7 @@ const AGENT_BREAKDOWN_LIMIT = 6
 function timeCondition(days: number | undefined): ReturnType<typeof sql.raw> | typeof sql.empty {
   if (!days || days <= 0) return sql.empty
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-  return sql`AND s.time_created >= ${cutoff}`
+  return sql`AND s.time_updated >= ${cutoff}`
 }
 
 function allTimeTimeseriesLimit(days: number | undefined): ReturnType<typeof sql.raw> | typeof sql.empty {
@@ -107,7 +107,7 @@ export const StatsHandler = HttpApiBuilder.group(Api, "server.stats", (handlers)
           }>(sql`
             WITH daily AS (
               SELECT
-                date(s.time_created / 1000, 'unixepoch') as date,
+                date(s.time_updated / 1000, 'unixepoch') as date,
                 COALESCE(SUM(s.cost), 0) as cost,
                 COALESCE(SUM(s.tokens_input), 0) as total_input,
                 COALESCE(SUM(s.tokens_output), 0) as total_output,

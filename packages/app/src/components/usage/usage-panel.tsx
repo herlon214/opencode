@@ -1,5 +1,6 @@
 import { createMemo, For, type JSX, Show } from "solid-js"
 import { createStore } from "solid-js/store"
+import type { Session } from "@opencode-ai/sdk/v2/client"
 import { useQuery } from "@tanstack/solid-query"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { useGlobal } from "@/context/global"
@@ -71,7 +72,30 @@ type ByAgentItem = {
   }
 }
 
+const USAGE_DIRECTORY_BATCH_SIZE = 4
 const num = (v: number | string): number => (typeof v === "number" ? v : Number(v) || 0)
+
+function waitForUsageBatchPaint() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      setTimeout(resolve, 0)
+      return
+    }
+    requestAnimationFrame(() => setTimeout(resolve, 0))
+  })
+}
+
+async function mapUsageDirectories<A>(directories: string[], load: (directory: string) => Promise<A | undefined>) {
+  const result: A[] = []
+  for (let index = 0; index < directories.length; index += USAGE_DIRECTORY_BATCH_SIZE) {
+    if (index > 0) await waitForUsageBatchPaint()
+    const loaded = await Promise.all(directories.slice(index, index + USAGE_DIRECTORY_BATCH_SIZE).map(load))
+    loaded.forEach((item) => {
+      if (item !== undefined) result.push(item)
+    })
+  }
+  return result
+}
 
 function totalTokens(tokens: OverviewData["total_tokens"]): number {
   return num(tokens.input) + num(tokens.output) + num(tokens.reasoning) + num(tokens.cache_read) + num(tokens.cache_write)
@@ -115,6 +139,28 @@ function mergeTimeseries(items: TimeseriesPoint[][]): TimeseriesPoint[] {
     })
   })
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+function sessionsTimeseries(sessions: Session[] | undefined, days: number | undefined): TimeseriesPoint[] {
+  const cutoff = days && days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0
+  return mergeTimeseries(
+    (sessions ?? [])
+      .filter((session) => session.time.updated >= cutoff)
+      .map((session) => [
+        {
+          date: new Date(session.time.updated).toISOString().slice(0, 10),
+          cost: session.cost ?? 0,
+          tokens: {
+            input: session.tokens?.input ?? 0,
+            output: session.tokens?.output ?? 0,
+            reasoning: session.tokens?.reasoning ?? 0,
+            cache_read: session.tokens?.cache.read ?? 0,
+            cache_write: session.tokens?.cache.write ?? 0,
+          },
+          sessions: 1,
+        },
+      ]),
+  )
 }
 
 function mergeByModel(items: ByModelItem[][]): ByModelItem[] {
@@ -176,11 +222,16 @@ function costBreakdown(data: ByModelItem[], key: "modelID" | "providerID"): Donu
     .map((item, i) => ({ ...item, color: costDonutColor(i) }))
 }
 
-export function UsagePanel(props: { server?: ServerConnection.Any; directory?: string; directories?: string[] }) {
+export function UsagePanel(props: {
+  server?: ServerConnection.Any
+  directory?: string
+  directories?: string[]
+  sessions?: Session[]
+}) {
   const global = useGlobal()
   const server = useServer()
   const [state, setState] = createStore({
-    mode: "cost" as "cost" | "tokens",
+    mode: "tokens" as "cost" | "tokens",
     range: 7 as 7 | 30 | 90 | 0,
     costGroup: "model" as "model" | "provider",
   })
@@ -199,23 +250,19 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
     return global.ensureServerCtx(conn)
   })
 
-  const createClient = (directory: string) => {
-    const ctx = serverCtx()
-    if (!ctx) return
-    return ctx.sdk.createClient({ directory, throwOnError: true })
-  }
+  const client = () => serverCtx()?.sdk.client
 
-  const clientReady = createMemo(() => !!serverCtx() && directories().length > 0)
+  const clientReady = createMemo(() => !!client() && directories().length > 0)
 
   const overviewQuery = useQuery(() => ({
     queryKey: ["stats", "overview", serverKey(), directories(), daysParam()],
     queryFn: async () => {
-      const result = await Promise.all(
-        directories().map(async (directory) => {
-          const response = await createClient(directory)!.v2.stats.overview({ days: daysParam() })
-          return response.data?.data as unknown as OverviewData
-        }),
-      )
+      const result = await mapUsageDirectories(directories(), async (directory) => {
+        const response = await client()!.v2.stats
+          .overview({ location: { directory }, days: daysParam() })
+          .catch(() => undefined)
+        return response?.data?.data as unknown as OverviewData | undefined
+      })
       return mergeOverview(result)
     },
     enabled: clientReady(),
@@ -225,12 +272,12 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
   const timeseriesQuery = useQuery(() => ({
     queryKey: ["stats", "timeseries", serverKey(), directories(), daysParam()],
     queryFn: async () => {
-      const result = await Promise.all(
-        directories().map(async (directory) => {
-          const response = await createClient(directory)!.v2.stats.timeseries({ days: daysParam() })
-          return (response.data?.data ?? []) as unknown as TimeseriesPoint[]
-        }),
-      )
+      const result = await mapUsageDirectories(directories(), async (directory) => {
+        const response = await client()!.v2.stats
+          .timeseries({ location: { directory }, days: daysParam() })
+          .catch(() => undefined)
+        return response?.data?.data as unknown as TimeseriesPoint[] | undefined
+      })
       return mergeTimeseries(result)
     },
     enabled: clientReady(),
@@ -240,12 +287,12 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
   const byModelQuery = useQuery(() => ({
     queryKey: ["stats", "byModel", serverKey(), directories(), daysParam()],
     queryFn: async () => {
-      const result = await Promise.all(
-        directories().map(async (directory) => {
-          const response = await createClient(directory)!.v2.stats.byModel({ days: daysParam() })
-          return (response.data?.data ?? []) as unknown as ByModelItem[]
-        }),
-      )
+      const result = await mapUsageDirectories(directories(), async (directory) => {
+        const response = await client()!.v2.stats
+          .byModel({ location: { directory }, days: daysParam() })
+          .catch(() => undefined)
+        return response?.data?.data as unknown as ByModelItem[] | undefined
+      })
       return mergeByModel(result)
     },
     enabled: clientReady(),
@@ -255,12 +302,12 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
   const byAgentQuery = useQuery(() => ({
     queryKey: ["stats", "byAgent", serverKey(), directories(), daysParam()],
     queryFn: async () => {
-      const result = await Promise.all(
-        directories().map(async (directory) => {
-          const response = await createClient(directory)!.v2.stats.byAgent({ days: daysParam() })
-          return (response.data?.data ?? []) as unknown as ByAgentItem[]
-        }),
-      )
+      const result = await mapUsageDirectories(directories(), async (directory) => {
+        const response = await client()!.v2.stats
+          .byAgent({ location: { directory }, days: daysParam() })
+          .catch(() => undefined)
+        return response?.data?.data as unknown as ByAgentItem[] | undefined
+      })
       return mergeByAgent(result)
     },
     enabled: clientReady(),
@@ -289,6 +336,13 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
       value: num(item.cost),
       color: costDonutColor(i),
     }))
+  })
+
+  const timeseriesData = createMemo(() => {
+    const data = timeseriesQuery.data ?? []
+    const sessionData = sessionsTimeseries(props.sessions, state.range > 0 ? state.range : undefined)
+    if (sessionData.length > data.length) return sessionData
+    return data
   })
 
   const loading = createMemo(() => !overviewQuery.data && (overviewQuery.isLoading || timeseriesQuery.isLoading))
@@ -367,7 +421,7 @@ export function UsagePanel(props: { server?: ServerConnection.Any; directory?: s
                   </button>
                 </div>
               </div>
-              <UsageAreaChart data={(timeseriesQuery.data ?? []) as TimeseriesPoint[]} mode={state.mode} />
+              <UsageAreaChart data={timeseriesData()} mode={state.mode} />
               <Show when={state.mode === "tokens"}>
                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                   <For each={TOKEN_CATEGORY_KEYS}>

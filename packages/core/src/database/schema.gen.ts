@@ -205,6 +205,10 @@ export default {
           \`permission\` text,
           \`agent\` text,
           \`model\` text,
+          \`goal_objective\` text,
+          \`goal_status\` text,
+          \`goal_tokens_used\` integer DEFAULT 0 NOT NULL,
+          \`goal_time_used\` integer DEFAULT 0 NOT NULL,
           \`time_created\` integer NOT NULL,
           \`time_updated\` integer NOT NULL,
           \`time_compacting\` integer,
@@ -268,6 +272,15 @@ export default {
       yield* tx.run(`CREATE INDEX \`session_project_idx\` ON \`session\` (\`project_id\`);`)
       yield* tx.run(`CREATE INDEX \`session_workspace_idx\` ON \`session\` (\`workspace_id\`);`)
       yield* tx.run(`CREATE INDEX \`session_parent_idx\` ON \`session\` (\`parent_id\`);`)
+      yield* tx.run(
+        `CREATE INDEX \`session_directory_time_created_idx\` ON \`session\` (\`directory\`,\`time_created\`);`,
+      )
+      yield* tx.run(
+        `CREATE INDEX \`session_directory_time_updated_idx\` ON \`session\` (\`directory\`,\`time_updated\`);`,
+      )
+      yield* tx.run(
+        `CREATE INDEX \`session_project_directory_parent_time_updated_idx\` ON \`session\` (\`project_id\`,\`directory\`,\`parent_id\`,\`time_updated\`);`,
+      )
       yield* tx.run(`CREATE INDEX \`todo_session_idx\` ON \`todo\` (\`session_id\`);`)
     })
   },

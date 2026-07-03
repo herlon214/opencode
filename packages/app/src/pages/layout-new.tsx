@@ -6,6 +6,7 @@ import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
 import { usePlatform } from "@/context/platform"
 import { setNavigate } from "@/utils/notification-click"
 import { setV2Toast, ToastRegion } from "@/utils/toast"
+import { Spinner } from "@opencode-ai/ui/spinner"
 
 export default function NewLayout(props: ParentProps) {
   const platform = usePlatform()
@@ -34,11 +35,19 @@ export default function NewLayout(props: ParentProps) {
     >
       <Titlebar update={update} />
       <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
-        <Suspense>{props.children}</Suspense>
+        <Suspense fallback={<RouteLoading />}>{props.children}</Suspense>
       </main>
       {import.meta.env.DEV && <DebugBar inline />}
       <HelpButton />
       <ToastRegion v2 />
+    </div>
+  )
+}
+
+function RouteLoading() {
+  return (
+    <div class="m-2 flex min-h-0 flex-1 self-stretch items-center justify-center rounded-[10px] bg-v2-background-bg-base shadow-[var(--v2-elevation-raised)]">
+      <Spinner class="size-5 text-v2-icon-icon-muted" />
     </div>
   )
 }
