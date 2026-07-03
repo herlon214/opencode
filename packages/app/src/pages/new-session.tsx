@@ -10,6 +10,7 @@ import {
   createPromptProjectController,
 } from "@/components/prompt-project-selector"
 import { useComments } from "@/context/comments"
+import { useCommand } from "@/context/command"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
@@ -35,6 +36,7 @@ export default function NewSessionPage() {
   const serverSync = useServerSync()
   const comments = useComments()
   const language = useLanguage()
+  const command = useCommand()
   const route = useSessionKey()
   const [searchParams, setSearchParams] = useSearchParams<{ draftId?: string; prompt?: string }>()
 
@@ -53,6 +55,16 @@ export default function NewSessionPage() {
     controls: projectControls,
     onDone: () => inputRef?.focus(),
   })
+
+  command.register("new-session.project", () => [
+    {
+      id: "project.picker",
+      title: language.t("command.project.picker"),
+      category: language.t("command.category.project"),
+      keybind: "mod+e",
+      onSelect: () => projectController.setOpen(true),
+    },
+  ])
 
   const [store, setStore] = createStore<{ worktree?: string }>({})
 
