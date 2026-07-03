@@ -195,7 +195,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       }
 
       return {
-        autoload: Object.keys(input.models).length > 0,
+        autoload: ok,
         options: ok ? {} : { apiKey: "public" },
       }
     }),
