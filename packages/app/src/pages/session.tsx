@@ -1661,18 +1661,33 @@ export default function Page() {
   const followupMutation = useMutation(() => ({
     mutationFn: async (input: { sessionID: string; id: string; manual?: boolean }) => {
       const owner = sessionOwnership.capture()
-      const item = (followup.items[input.sessionID] ?? []).find((entry) => entry.id === input.id)
-      if (!item) return
+      const items = followup.items[input.sessionID] ?? []
+      const index = items.findIndex((entry) => entry.id === input.id)
+      const item = items[index]
+      if (index < 0 || !item) return
 
       if (input.manual) setFollowup("paused", input.sessionID, undefined)
       setFollowup("failed", input.sessionID, undefined)
 
+      const removeItem = () =>
+        setFollowup("items", input.sessionID, (items) => (items ?? []).filter((entry) => entry.id !== input.id))
+      const restoreItem = () =>
+        setFollowup("items", input.sessionID, (items) => {
+          const current = items ?? []
+          if (current.some((entry) => entry.id === input.id)) return current
+          const next = current.slice()
+          next.splice(Math.min(index, next.length), 0, item)
+          return next
+        })
+
       if (item.commandId) {
         command.trigger(item.commandId, "slash")
-        setFollowup("items", input.sessionID, (items) => (items ?? []).filter((entry) => entry.id !== input.id))
+        removeItem()
         if (input.manual) owner.run(resumeScroll)
         return
       }
+
+      removeItem()
 
       const ok = await sendFollowupDraft({
         client: sdk().client,
@@ -1685,9 +1700,11 @@ export default function Page() {
         fail(err)
         return false
       })
-      if (!ok) return
+      if (!ok) {
+        restoreItem()
+        return
+      }
 
-      setFollowup("items", input.sessionID, (items) => (items ?? []).filter((entry) => entry.id !== input.id))
       if (input.manual) owner.run(resumeScroll)
     },
   }))
