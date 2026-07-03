@@ -681,6 +681,53 @@ const adaptGroup17 = (raw: RawClient["server.projectCopy"]) => ({
   refresh: Endpoint17_2(raw),
 })
 
+type Endpoint18_0Request = Parameters<RawClient["server.stats"]["stats.overview"]>[0]
+type Endpoint18_0Input = {
+  readonly location?: Endpoint18_0Request["query"]["location"]
+  readonly days?: Endpoint18_0Request["query"]["days"]
+}
+const Endpoint18_0 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_0Input) =>
+  raw["stats.overview"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
+    Effect.mapError(mapClientError),
+  )
+
+type Endpoint18_1Request = Parameters<RawClient["server.stats"]["stats.timeseries"]>[0]
+type Endpoint18_1Input = {
+  readonly location?: Endpoint18_1Request["query"]["location"]
+  readonly days?: Endpoint18_1Request["query"]["days"]
+}
+const Endpoint18_1 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_1Input) =>
+  raw["stats.timeseries"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
+    Effect.mapError(mapClientError),
+  )
+
+type Endpoint18_2Request = Parameters<RawClient["server.stats"]["stats.byModel"]>[0]
+type Endpoint18_2Input = {
+  readonly location?: Endpoint18_2Request["query"]["location"]
+  readonly days?: Endpoint18_2Request["query"]["days"]
+}
+const Endpoint18_2 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_2Input) =>
+  raw["stats.byModel"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
+    Effect.mapError(mapClientError),
+  )
+
+type Endpoint18_3Request = Parameters<RawClient["server.stats"]["stats.byAgent"]>[0]
+type Endpoint18_3Input = {
+  readonly location?: Endpoint18_3Request["query"]["location"]
+  readonly days?: Endpoint18_3Request["query"]["days"]
+}
+const Endpoint18_3 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_3Input) =>
+  raw["stats.byAgent"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
+    Effect.mapError(mapClientError),
+  )
+
+const adaptGroup18 = (raw: RawClient["server.stats"]) => ({
+  overview: Endpoint18_0(raw),
+  timeseries: Endpoint18_1(raw),
+  byModel: Endpoint18_2(raw),
+  byAgent: Endpoint18_3(raw),
+})
+
 const adaptClient = (raw: RawClient) => ({
   health: adaptGroup0(raw["server.health"]),
   location: adaptGroup1(raw["server.location"]),
@@ -700,6 +747,7 @@ const adaptClient = (raw: RawClient) => ({
   questions: adaptGroup15(raw["server.question"]),
   references: adaptGroup16(raw["server.reference"]),
   projectCopies: adaptGroup17(raw["server.projectCopy"]),
+  stats: adaptGroup18(raw["server.stats"]),
 })
 
 export const make = (options?: { readonly baseUrl?: URL | string }) =>

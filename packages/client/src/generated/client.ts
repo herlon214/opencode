@@ -112,6 +112,14 @@ import type {
   ProjectCopiesRemoveOutput,
   ProjectCopiesRefreshInput,
   ProjectCopiesRefreshOutput,
+  StatsOverviewInput,
+  StatsOverviewOutput,
+  StatsTimeseriesInput,
+  StatsTimeseriesOutput,
+  StatsByModelInput,
+  StatsByModelOutput,
+  StatsByAgentInput,
+  StatsByAgentOutput,
 } from "./types"
 import { ClientError } from "./client-error"
 
@@ -983,6 +991,56 @@ export function make(options: ClientOptions) {
             successStatus: 204,
             declaredStatuses: [400, 401],
             empty: true,
+          },
+          requestOptions,
+        ),
+    },
+    stats: {
+      overview: (input?: StatsOverviewInput, requestOptions?: RequestOptions) =>
+        request<StatsOverviewOutput>(
+          {
+            method: "GET",
+            path: `/api/stats/overview`,
+            query: { location: input?.["location"], days: input?.["days"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      timeseries: (input?: StatsTimeseriesInput, requestOptions?: RequestOptions) =>
+        request<StatsTimeseriesOutput>(
+          {
+            method: "GET",
+            path: `/api/stats/timeseries`,
+            query: { location: input?.["location"], days: input?.["days"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      byModel: (input?: StatsByModelInput, requestOptions?: RequestOptions) =>
+        request<StatsByModelOutput>(
+          {
+            method: "GET",
+            path: `/api/stats/by-model`,
+            query: { location: input?.["location"], days: input?.["days"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      byAgent: (input?: StatsByAgentInput, requestOptions?: RequestOptions) =>
+        request<StatsByAgentOutput>(
+          {
+            method: "GET",
+            path: `/api/stats/by-agent`,
+            query: { location: input?.["location"], days: input?.["days"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
           },
           requestOptions,
         ),

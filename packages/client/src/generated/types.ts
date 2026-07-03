@@ -2823,3 +2823,134 @@ export type ProjectCopiesRefreshInput = {
 }
 
 export type ProjectCopiesRefreshOutput = void
+
+export type StatsOverviewInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["location"]
+  readonly days?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["days"]
+}
+
+export type StatsOverviewOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: {
+    readonly total_sessions: number | "Infinity" | "-Infinity" | "NaN"
+    readonly total_messages: number | "Infinity" | "-Infinity" | "NaN"
+    readonly total_cost: number | "Infinity" | "-Infinity" | "NaN"
+    readonly total_tokens: {
+      readonly input: number | "Infinity" | "-Infinity" | "NaN"
+      readonly output: number | "Infinity" | "-Infinity" | "NaN"
+      readonly reasoning: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_read: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_write: number | "Infinity" | "-Infinity" | "NaN"
+    }
+    readonly date_range: {
+      readonly earliest: number | "Infinity" | "-Infinity" | "NaN"
+      readonly latest: number | "Infinity" | "-Infinity" | "NaN"
+    }
+  }
+}
+
+export type StatsTimeseriesInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["location"]
+  readonly days?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["days"]
+}
+
+export type StatsTimeseriesOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: ReadonlyArray<{
+    readonly date: string
+    readonly cost: number | "Infinity" | "-Infinity" | "NaN"
+    readonly tokens: {
+      readonly input: number | "Infinity" | "-Infinity" | "NaN"
+      readonly output: number | "Infinity" | "-Infinity" | "NaN"
+      readonly reasoning: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_read: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_write: number | "Infinity" | "-Infinity" | "NaN"
+    }
+    readonly sessions: number | "Infinity" | "-Infinity" | "NaN"
+  }>
+}
+
+export type StatsByModelInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["location"]
+  readonly days?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["days"]
+}
+
+export type StatsByModelOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: ReadonlyArray<{
+    readonly model: string
+    readonly providerID: string
+    readonly modelID: string
+    readonly sessions: number | "Infinity" | "-Infinity" | "NaN"
+    readonly messages: number | "Infinity" | "-Infinity" | "NaN"
+    readonly cost: number | "Infinity" | "-Infinity" | "NaN"
+    readonly tokens: {
+      readonly input: number | "Infinity" | "-Infinity" | "NaN"
+      readonly output: number | "Infinity" | "-Infinity" | "NaN"
+      readonly reasoning: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_read: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_write: number | "Infinity" | "-Infinity" | "NaN"
+    }
+  }>
+}
+
+export type StatsByAgentInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["location"]
+  readonly days?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+    readonly days?: number | undefined
+  }["days"]
+}
+
+export type StatsByAgentOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: ReadonlyArray<{
+    readonly agent: string
+    readonly sessions: number | "Infinity" | "-Infinity" | "NaN"
+    readonly cost: number | "Infinity" | "-Infinity" | "NaN"
+    readonly tokens: {
+      readonly input: number | "Infinity" | "-Infinity" | "NaN"
+      readonly output: number | "Infinity" | "-Infinity" | "NaN"
+      readonly reasoning: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_read: number | "Infinity" | "-Infinity" | "NaN"
+      readonly cache_write: number | "Infinity" | "-Infinity" | "NaN"
+    }
+  }>
+}

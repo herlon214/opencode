@@ -393,6 +393,14 @@ import type {
   V2SessionWaitResponses,
   V2SkillListErrors,
   V2SkillListResponses,
+  V2StatsByAgentErrors,
+  V2StatsByAgentResponses,
+  V2StatsByModelErrors,
+  V2StatsByModelResponses,
+  V2StatsOverviewErrors,
+  V2StatsOverviewResponses,
+  V2StatsTimeseriesErrors,
+  V2StatsTimeseriesResponses,
   VcsApplyErrors,
   VcsApplyResponses,
   VcsDiffErrors,
@@ -7137,6 +7145,140 @@ export class ProjectCopy2 extends HeyApiClient {
   }
 }
 
+export class Stats extends HeyApiClient {
+  /**
+   * Get usage overview
+   *
+   * Aggregate token usage and cost statistics across all sessions.
+   */
+  public overview<ThrowOnError extends boolean = false>(
+    parameters?: {
+      location?: {
+        directory?: string
+        workspace?: string
+      }
+      days?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "location" },
+            { in: "query", key: "days" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<V2StatsOverviewResponses, V2StatsOverviewErrors, ThrowOnError>({
+      url: "/api/stats/overview",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get usage timeseries
+   *
+   * Daily breakdown of tokens and cost, filterable by number of days.
+   */
+  public timeseries<ThrowOnError extends boolean = false>(
+    parameters?: {
+      location?: {
+        directory?: string
+        workspace?: string
+      }
+      days?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "location" },
+            { in: "query", key: "days" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<V2StatsTimeseriesResponses, V2StatsTimeseriesErrors, ThrowOnError>({
+      url: "/api/stats/timeseries",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get usage by model
+   *
+   * Breakdown of tokens and cost by model.
+   */
+  public byModel<ThrowOnError extends boolean = false>(
+    parameters?: {
+      location?: {
+        directory?: string
+        workspace?: string
+      }
+      days?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "location" },
+            { in: "query", key: "days" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<V2StatsByModelResponses, V2StatsByModelErrors, ThrowOnError>({
+      url: "/api/stats/by-model",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get usage by agent
+   *
+   * Breakdown of tokens and cost by agent.
+   */
+  public byAgent<ThrowOnError extends boolean = false>(
+    parameters?: {
+      location?: {
+        directory?: string
+        workspace?: string
+      }
+      days?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "location" },
+            { in: "query", key: "days" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<V2StatsByAgentResponses, V2StatsByAgentErrors, ThrowOnError>({
+      url: "/api/stats/by-agent",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class V2 extends HeyApiClient {
   private _health?: Health
   get health(): Health {
@@ -7221,6 +7363,11 @@ export class V2 extends HeyApiClient {
   private _projectCopy?: ProjectCopy2
   get projectCopy(): ProjectCopy2 {
     return (this._projectCopy ??= new ProjectCopy2({ client: this.client }))
+  }
+
+  private _stats?: Stats
+  get stats(): Stats {
+    return (this._stats ??= new Stats({ client: this.client }))
   }
 }
 

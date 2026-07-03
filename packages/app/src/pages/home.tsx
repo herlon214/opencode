@@ -1,6 +1,7 @@
 import type { Session } from "@opencode-ai/sdk/v2/client"
 import {
   type ComponentProps,
+  type JSX,
   createEffect,
   createMemo,
   createResource,
@@ -67,6 +68,7 @@ import { useMarked } from "@opencode-ai/ui/context/marked"
 import { preloadMarkdown } from "@opencode-ai/session-ui/markdown-cache"
 import { archiveHomeSession } from "./home-session-archive"
 import { showToast } from "@/utils/toast"
+import { UsagePanel } from "@/components/usage/usage-panel"
 
 const HOME_SESSION_LIMIT = 64
 const HOME_SESSION_HEADER_STICKY_TOP = 12
@@ -283,6 +285,7 @@ export function NewHome() {
     if (!project) return projects().flatMap(directories)
     return directories(project)
   })
+  const showUsageDashboard = createMemo(() => !selectedProject() && projectDirectories().length > 0)
   const search = createMemo(() => state.search.trim())
   const searchPlaceholder = createMemo(() => {
     const project = selectedProject()
@@ -321,13 +324,14 @@ export function NewHome() {
     }),
   )
   const records = createMemo(() => allRecords().slice(0, HOME_SESSION_LIMIT))
+  const recentRecords = createMemo(() => (showUsageDashboard() ? records().slice(0, 5) : []))
   const searchResults = createMemo(() => {
     const query = search().toLowerCase()
     if (!query) return []
     return allRecords().filter((record) => matchesHomeSessionSearch(record, query))
   })
   const searchOpen = createMemo(() => state.searchFocused && search().length > 0)
-  const groups = createMemo(() => groupSessions(records(), language))
+  const groups = createMemo(() => groupSessions(showUsageDashboard() ? records().slice(5) : records(), language))
   const sessionHeaderOpacity = useHomeSessionHeaderOpacity(groups)
   const prefetched = new Set<string>()
 
@@ -566,20 +570,6 @@ export function NewHome() {
             viewportRef={sessionHeaderOpacity.setViewport}
             onScroll={(event) => sessionHeaderOpacity.update(event.currentTarget.scrollTop)}
           >
-            <Show when={groups().length > 0 && newSessionProject()}>
-              <div class="pointer-events-none absolute top-3 right-3 z-20 flex">
-                <ButtonV2
-                  data-action="home-new-session"
-                  variant="ghost-muted"
-                  size="normal"
-                  icon="edit"
-                  class="pointer-events-auto h-7 px-2 [font-weight:530]"
-                  onClick={openNewSession}
-                >
-                  {language.t("command.session.new")}
-                </ButtonV2>
-              </div>
-            </Show>
             <Show
               when={!sessionLoad.isLoading}
               fallback={
@@ -589,37 +579,97 @@ export function NewHome() {
               }
             >
               <Show
-                when={groups().length > 0}
-                fallback={<HomeSessionsEmpty onNewSession={newSessionProject() ? openNewSession : undefined} />}
+                when={records().length > 0}
+                fallback={
+                  <div class="flex flex-col gap-4 pt-3 pr-3 pb-16">
+                    <Show when={showUsageDashboard()}>
+                      <UsagePanel server={focusedServer()} directories={projectDirectories()} />
+                    </Show>
+                    <HomeSessionsEmpty onNewSession={newSessionProject() ? openNewSession : undefined} />
+                  </div>
+                }
               >
                 <div ref={sessionHeaderOpacity.setContentRef} class="flex flex-col pt-3 pr-3 pb-16">
-                  <For each={groups()}>
-                    {(group, index) => (
-                      <>
-                        <HomeSessionGroupHeader
-                          title={group.title}
-                          titleOpacity={sessionHeaderOpacity.titleOpacity(group.id)}
-                          ref={(el) => sessionHeaderOpacity.setHeaderRef(group.id, el)}
-                          elevated={index() === 0}
-                        />
-                        <div
-                          class={`flex min-w-0 flex-col gap-px pt-4 ${index() === groups().length - 1 ? "" : "mb-6"}`}
+                  <Show when={showUsageDashboard()}>
+                    <div class="flex h-7 min-w-0 items-center justify-between pl-3">
+                      <div class={HOME_SECTION_LABEL}>Recent Sessions</div>
+                      <Show when={newSessionProject()}>
+                        <ButtonV2
+                          data-action="home-new-session"
+                          variant="ghost-muted"
+                          size="normal"
+                          icon="edit"
+                          class="h-7 px-2 [font-weight:530]"
+                          onClick={openNewSession}
                         >
-                          <For each={group.sessions}>
-                            {(record) => (
-                              <HomeSessionRow
-                                record={record}
-                                showProjectName={!selectedProject()}
-                                server={selection().server}
-                                openSession={openSession}
-                                archiveSession={archiveSession}
-                              />
-                            )}
-                          </For>
-                        </div>
-                      </>
-                    )}
-                  </For>
+                          {language.t("command.session.new")}
+                        </ButtonV2>
+                      </Show>
+                    </div>
+                    <div class="mb-4 flex min-w-0 flex-col gap-px pt-4">
+                      <For each={recentRecords()}>
+                        {(record) => (
+                          <HomeSessionRow
+                            record={record}
+                            showProjectName={!selectedProject()}
+                            server={selection().server}
+                            openSession={openSession}
+                            archiveSession={archiveSession}
+                          />
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+
+                  <Show when={showUsageDashboard()}>
+                    <UsagePanel server={focusedServer()} directories={projectDirectories()} />
+                  </Show>
+
+                  <Show when={groups().length > 0}>
+                    <div class="mt-6">
+                      <For each={groups()}>
+                        {(group, index) => (
+                          <>
+                            <HomeSessionGroupHeader
+                              title={group.title}
+                              titleOpacity={sessionHeaderOpacity.titleOpacity(group.id)}
+                              ref={(el) => sessionHeaderOpacity.setHeaderRef(group.id, el)}
+                              elevated={index() === 0}
+                              actions={
+                                index() === 0 && !showUsageDashboard() && newSessionProject() ? (
+                                  <ButtonV2
+                                    data-action="home-new-session"
+                                    variant="ghost-muted"
+                                    size="normal"
+                                    icon="edit"
+                                    class="pointer-events-auto h-7 px-2 [font-weight:530]"
+                                    onClick={openNewSession}
+                                  >
+                                    {language.t("command.session.new")}
+                                  </ButtonV2>
+                                ) : undefined
+                              }
+                            />
+                            <div
+                              class={`flex min-w-0 flex-col gap-px pt-4 ${index() === groups().length - 1 ? "" : "mb-6"}`}
+                            >
+                              <For each={group.sessions}>
+                                {(record) => (
+                                  <HomeSessionRow
+                                    record={record}
+                                    showProjectName={!selectedProject()}
+                                    server={selection().server}
+                                    openSession={openSession}
+                                    archiveSession={archiveSession}
+                                  />
+                                )}
+                              </For>
+                            </div>
+                          </>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
                 </div>
               </Show>
             </Show>
@@ -690,7 +740,16 @@ function HomeProjectColumn(props: {
         <Show
           when={global.servers.list().length > 1}
           fallback={
-            <div class="pr-3">
+            <div class="flex min-w-0 flex-col gap-1 pr-3">
+              <HomeOverviewRow
+                server={global.servers.list()[0]!}
+                selected={
+                  props.selected.server === ServerConnection.key(global.servers.list()[0]!) && !props.selected.directory
+                }
+                disabled={global.servers.health[ServerConnection.key(global.servers.list()[0]!)]?.healthy === false}
+                focusServer={props.focusServer}
+              />
+              <div class="mx-3 h-px bg-v2-border-border-base" />
               <HomeProjectList {...props} server={global.servers.list()[0]!} />
             </div>
           }
@@ -762,6 +821,30 @@ function HomeUtilityNav(props: {
       >
         <IconV2 name="help" size="small" />
         <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.help")}</span>
+      </button>
+    </div>
+  )
+}
+
+function HomeOverviewRow(props: {
+  server: ServerConnection.Any
+  selected: boolean
+  disabled: boolean
+  focusServer: (server: ServerConnection.Any) => void
+}) {
+  return (
+    <div class="relative flex h-7 min-w-0 items-center rounded-[6px]">
+      <button
+        type="button"
+        data-component="home-overview-row"
+        class={`${HOME_PROJECT_NAV_ROW} disabled:opacity-60`}
+        data-selected={props.selected ? "" : undefined}
+        aria-current={props.selected ? "page" : undefined}
+        disabled={props.disabled}
+        onClick={() => props.focusServer(props.server)}
+      >
+        <IconV2 name="grid-plus" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+        <span class={HOME_PROJECT_NAV_LABEL}>Overview</span>
       </button>
     </div>
   )
@@ -1273,6 +1356,7 @@ function HomeSessionGroupHeader(props: {
   titleOpacity: number
   ref: ComponentProps<"div">["ref"]
   elevated?: boolean
+  actions?: JSX.Element
 }) {
   return (
     <div
@@ -1282,6 +1366,7 @@ function HomeSessionGroupHeader(props: {
       <div class={HOME_SECTION_LABEL} style={{ opacity: props.titleOpacity }}>
         {props.title}
       </div>
+      {props.actions}
     </div>
   )
 }
