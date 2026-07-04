@@ -1220,6 +1220,15 @@ export type Config = {
       subtask?: boolean
     }
   }
+  workflows?: {
+    [key: string]: {
+      description?: string
+      steps: Array<
+        | { type: "prompt"; text: string }
+        | { type: "command"; command: string }
+      >
+    }
+  }
   watcher?: {
     ignore?: Array<string>
   }

@@ -24,6 +24,14 @@ export type SessionComposerRevertDock = {
   onRestore: (id: string) => void
 }
 
+export type SessionComposerWorkflowDock = {
+  name: string
+  description?: string
+  steps: Array<{ type: "prompt"; text: string } | { type: "command"; command: string }>
+  current: number
+  onCancel: () => void
+}
+
 export function createSessionComposerRegionController(input: {
   state: SessionComposerController
   sessionKey: Accessor<string>
@@ -37,6 +45,7 @@ export function createSessionComposerRegionController(input: {
   }
   followup: Accessor<SessionComposerFollowupDock | undefined>
   revert: Accessor<SessionComposerRevertDock | undefined>
+  workflow: Accessor<SessionComposerWorkflowDock | undefined>
   onResponseSubmit: () => void
   openParent: () => void
   setPromptRef: (el: HTMLDivElement) => void
@@ -129,6 +138,7 @@ export function createSessionComposerRegionController(input: {
     todo: input.todo,
     followup: input.followup,
     revert: input.revert,
+    workflow: input.workflow,
     onResponseSubmit: input.onResponseSubmit,
     openParent: input.openParent,
     setPromptRef: input.setPromptRef,

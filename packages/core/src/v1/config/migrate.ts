@@ -61,6 +61,7 @@ export function migrate(info: typeof ConfigV1.Info.Type) {
     },
     skills: info.skills && [...(info.skills.paths ?? []), ...(info.skills.urls ?? [])],
     commands: info.command,
+    workflows: info.workflows,
     instructions: info.instructions,
     references: info.references ?? info.reference,
     plugins: info.plugin?.map((plugin) =>

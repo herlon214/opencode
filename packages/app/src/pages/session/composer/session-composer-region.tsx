@@ -6,6 +6,7 @@ import { SessionQuestionDock } from "@/pages/session/composer/session-question-d
 import { SessionFollowupDock } from "@/pages/session/composer/session-followup-dock"
 import { SessionRevertDock } from "@/pages/session/composer/session-revert-dock"
 import { SessionTodoDock } from "@/pages/session/composer/session-todo-dock"
+import { SessionWorkflowDock } from "@/pages/session/composer/session-workflow-dock"
 import { GoalPopover } from "@/components/session/goal-popover"
 import type { SessionComposerRegionController } from "./session-composer-region-controller"
 
@@ -143,6 +144,9 @@ export function SessionComposerRegion(props: {
                   onRemove={controller.followup()!.onRemove}
                   onClear={controller.followup()!.onClear}
                 />
+              </Show>
+              <Show when={controller.workflow()} keyed>
+                {(workflow) => <SessionWorkflowDock {...workflow} />}
               </Show>
               <Show
                 when={controller.child()}
