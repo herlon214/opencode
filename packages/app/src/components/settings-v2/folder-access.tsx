@@ -134,7 +134,7 @@ export const SettingsFolderAccessV2: Component = () => {
                     size="small"
                     disabled={saving()}
                     aria-label={language.t("settings.folderAccess.row.remove")}
-                    icon={<IconV2 name="trash" size="large" class="text-v2-icon-icon-muted" />}
+                    icon={<IconV2 name="close" size="large" class="text-v2-icon-icon-muted" />}
                     onClick={() => void removeEntry(entry.path)}
                   />
                 </div>
