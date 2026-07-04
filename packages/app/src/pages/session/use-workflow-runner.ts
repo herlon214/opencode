@@ -29,7 +29,7 @@ export function createWorkflowRunner() {
 
   const start = (name: string, input: Input) => {
     const def = sync().data.config.workflows?.[name]
-    if (!def) return
+    if (!def || def.steps.length === 0) return
     setStore("active", input.sessionID, {
       name,
       description: def.description,
@@ -39,8 +39,7 @@ export function createWorkflowRunner() {
     queueStep(def.steps[0], input)
   }
 
-  const queueStep = (step: WorkflowStep | undefined, input: Input) => {
-    if (!step) return
+  const queueStep = (step: WorkflowStep, input: Input) => {
     if (step.type === "prompt") input.queuePrompt(step.text)
     else if (step.type === "command") input.queueCommand(step.command)
   }

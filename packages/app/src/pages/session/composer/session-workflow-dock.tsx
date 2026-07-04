@@ -12,7 +12,6 @@ export function SessionWorkflowDock(props: {
   onCancel: () => void
 }) {
   const language = useLanguage()
-  const total = createMemo(() => props.steps.length)
 
   const stepLabel = (step: WorkflowStep) => {
     if (step.type === "prompt") return step.text.slice(0, 60)
@@ -37,7 +36,7 @@ export function SessionWorkflowDock(props: {
           <span class="min-w-0 flex-1 truncate text-13-regular text-text-base">{props.description}</span>
         </Show>
         <span class="shrink-0 text-13-regular text-text-weak">
-          {language.t("session.workflowDock.progress", { current: props.current + 1, total: total() })}
+          {language.t("session.workflowDock.progress", { current: props.current + 1, total: props.steps.length })}
         </span>
         <IconButton
           icon="close-small"

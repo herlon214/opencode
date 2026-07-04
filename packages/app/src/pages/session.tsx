@@ -2107,16 +2107,17 @@ export default function Page() {
               onRestore: restore,
             }
           : undefined,
-      workflow: () =>
-        activeWorkflow()
-          ? {
-              name: activeWorkflow()!.name,
-              description: activeWorkflow()!.description,
-              steps: activeWorkflow()!.steps,
-              current: activeWorkflow()!.current,
-              onCancel: cancelWorkflow,
-            }
-          : undefined,
+      workflow: () => {
+        const run = activeWorkflow()
+        if (!run) return undefined
+        return {
+          name: run.name,
+          description: run.description,
+          steps: run.steps,
+          current: run.current,
+          onCancel: cancelWorkflow,
+        }
+      },
       onResponseSubmit: resumeScroll,
       openParent: () => {
         const id = info()?.parentID
