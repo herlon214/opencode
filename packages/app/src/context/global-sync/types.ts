@@ -13,6 +13,7 @@ import type {
   ReferenceInfo,
   Session,
   SessionStatus,
+  SkillV2Info,
   SnapshotFileDiff,
   Todo,
   VcsInfo,
@@ -37,6 +38,7 @@ export type State = {
   agent: Agent[]
   command: Command[]
   reference: ReferenceInfo[]
+  skill: SkillV2Info[]
   project: string
   projectMeta: ProjectMeta | undefined
   icon: string | undefined

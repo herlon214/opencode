@@ -16,6 +16,7 @@ function directoryState() {
     agent: [],
     command: [],
     reference: [],
+    skill: [],
     project: "",
     projectMeta: undefined,
     icon: undefined,
@@ -63,7 +64,7 @@ describe("bootstrapDirectory", () => {
         provider,
       },
       sdk: {
-        app: { agents: async () => ({ data: [{ name: "build", mode: "primary" }] }) },
+        app: { agents: async () => ({ data: [{ name: "build", mode: "primary" }] }), skills: async () => ({ data: [] }) },
         config: { get: async () => ({ data: {} }) },
         session: { status: async () => ({ data: {} }) },
         vcs: { get: async () => ({ data: undefined }) },
@@ -114,7 +115,7 @@ describe("bootstrapDirectory", () => {
       command: { list: async () => ({ data: [] }) },
       permission: { list: async () => ({ data: [] }) },
       question: { list: async () => ({ data: [] }) },
-      v2: { reference: { list: async () => ({ data: { data: [] } }) } },
+      v2: { reference: { list: async () => ({ data: { data: [] } }) }, skill: { list: async () => ({ data: { data: [] } }) } },
       mcp: { status: async () => ({ data: {} }) },
       provider: { list: async () => ({ data: { all: [], connected: [], default: {} } }) },
     } as unknown as OpencodeClient
@@ -170,7 +171,7 @@ describe("bootstrapDirectory", () => {
       command: { list: async () => ({ data: [] }) },
       permission: { list: async () => ({ data: [] }) },
       question: { list: async () => ({ data: [] }) },
-      v2: { reference: { list: async () => ({ data: { data: [] } }) } },
+      v2: { reference: { list: async () => ({ data: { data: [] } }) }, skill: { list: async () => ({ data: { data: [] } }) } },
       mcp: { status: async () => ({ data: {} }) },
       provider: { list: async () => ({ data: { all: [], connected: [], default: {} } }) },
     } as unknown as OpencodeClient

@@ -7,6 +7,7 @@ import type {
   ProviderAuthResponse,
   QuestionRequest,
   ReferenceInfo,
+  SkillV2Info,
   Session,
 } from "@opencode-ai/sdk/v2/client"
 import { showToast } from "@/utils/toast"
@@ -244,6 +245,13 @@ export const loadReferencesQuery = (scope: ServerScope, directory: string, sdk: 
     placeholderData: [],
   })
 
+export const loadSkillsQuery = (scope: ServerScope, directory: string, sdk: OpencodeClient) =>
+  queryOptions<SkillV2Info[]>({
+    queryKey: [scope, directory, "skills"] as const,
+    queryFn: () => retry(() => sdk.app.skills().then((x) => x.data ?? [])).catch(() => []),
+    placeholderData: [],
+  })
+
 export async function bootstrapDirectory(input: {
   directory: string
   scope: ServerScope
@@ -331,6 +339,7 @@ export async function bootstrapDirectory(input: {
         ),
       input.mcp && (() => retry(() => input.sdk.command.list().then((x) => input.setStore("command", x.data ?? [])))),
       () => input.queryClient.fetchQuery(loadReferencesQuery(input.scope, input.directory, input.sdk)),
+      () => input.queryClient.fetchQuery(loadSkillsQuery(input.scope, input.directory, input.sdk)),
       () =>
         retry(() =>
           input.sdk.permission.list().then((x) => {

@@ -37,6 +37,7 @@ const queryOptionsApi = {
   mcpResources: (directory: string) => ({ queryKey: [directory, "mcpResources"], queryFn: async () => ({}) }),
   lsp: (directory: string) => ({ queryKey: [directory, "lsp"], queryFn: async () => [] }),
   references: (directory: string) => ({ queryKey: [directory, "references"], queryFn: async () => [] }),
+  skills: (directory: string) => ({ queryKey: [directory, "skills"], queryFn: async () => [] }),
   sessions: (directory: string) => ({ queryKey: [directory, "loadSessions"] as const }),
 } as unknown as QueryOptionsApi
 
@@ -199,7 +200,7 @@ describe("createChildStoreManager", () => {
     try {
       if (!manager) throw new Error("manager required")
       const [store, setStore] = manager.child("/project", { bootstrap: false })
-      expect(querySingles.length - offset).toBe(6)
+      expect(querySingles.length - offset).toBe(7)
       const query = querySingles[offset + 1]
       const resourceQuery = querySingles[offset + 2]
       if (!query) throw new Error("query required")

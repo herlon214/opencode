@@ -10,7 +10,7 @@ import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { File } from "@opencode-ai/session-ui/file"
 import { Markdown } from "@opencode-ai/session-ui/markdown"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
-import type { Message, Part, UserMessage } from "@opencode-ai/sdk/v2/client"
+import type { Message, Part, SkillV2Info, UserMessage } from "@opencode-ai/sdk/v2/client"
 import { useLanguage } from "@/context/language"
 import { useProviders } from "@/hooks/use-providers"
 import { useSDK } from "@/context/sdk"
@@ -162,6 +162,26 @@ export function SessionContextTab() {
     if (!trimmed) return
     return trimmed
   })
+
+  const availableSkills = createMemo(() => sync().data.skill)
+
+  const loadedSkills = createMemo(
+    on(
+      () => messages().length,
+      () => {
+        const loaded = new Set<string>()
+        for (const message of messages()) {
+          const parts = sync().data.part[message.id] ?? []
+          for (const part of parts) {
+            if (part.type !== "tool" || part.tool !== "skill") continue
+            const name = part.state.input?.name
+            if (typeof name === "string" && name) loaded.add(name)
+          }
+        }
+        return loaded
+      },
+    ),
+  )
 
   const providerLabel = createMemo(() => {
     const c = ctx()
@@ -327,6 +347,43 @@ export function SessionContextTab() {
               </div>
             </div>
           )}
+        </Show>
+
+        <Show when={availableSkills().length > 0}>
+          <div class="flex flex-col gap-2">
+            <div class="text-12-regular text-text-weak">{language.t("context.skills.title")}</div>
+            <div class="flex flex-col gap-1">
+              <For each={availableSkills().toSorted((a, b) => a.name.localeCompare(b.name))}>
+                {(skill) => {
+                  const active = createMemo(() => loadedSkills().has(skill.name))
+                  return (
+                    <div class="flex items-start gap-2 text-12-regular">
+                      <div
+                        class="mt-0.5 size-1.5 rounded-full shrink-0"
+                        classList={{
+                          "bg-syntax-string": active(),
+                          "bg-text-weaker": !active(),
+                        }}
+                      />
+                      <div class="min-w-0 flex flex-col gap-0.5">
+                        <div class="flex items-center gap-2">
+                          <span class="text-text-strong truncate">{skill.name}</span>
+                          <Show when={active()}>
+                            <span class="text-10-regular text-text-weaker">
+                              {language.t("context.skills.active")}
+                            </span>
+                          </Show>
+                        </div>
+                        <Show when={skill.description}>
+                          <span class="text-text-weak truncate">{skill.description}</span>
+                        </Show>
+                      </div>
+                    </div>
+                  )
+                }}
+              </For>
+            </div>
+          </div>
         </Show>
 
         <div class="flex flex-col gap-2">

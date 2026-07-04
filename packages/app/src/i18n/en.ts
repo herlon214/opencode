@@ -460,6 +460,8 @@ export const dict = {
   "context.breakdown.other": "Other",
 
   "context.systemPrompt.title": "System Prompt",
+  "context.skills.title": "Skills",
+  "context.skills.active": "active",
   "context.rawMessages.title": "Raw messages",
 
   "context.stats.session": "Session",

@@ -23,6 +23,7 @@ import {
   loadProjectsQuery,
   loadProvidersQuery,
   loadReferencesQuery,
+  loadSkillsQuery,
 } from "./global-sync/bootstrap"
 import { createChildStoreManager } from "./global-sync/child-store"
 import { applyDirectoryEvent, applyGlobalEvent } from "./global-sync/event-reducer"
@@ -91,6 +92,7 @@ function makeQueryOptionsApi(
       loadPathQuery(scope, directory, directory === null ? serverSDK() : sdkFor(directory)),
     agents: (directory: PathKey) => loadAgentsQuery(scope, directory, sdkFor(directory)),
     references: (directory: PathKey) => loadReferencesQuery(scope, directory, sdkFor(directory)),
+    skills: (directory: PathKey) => loadSkillsQuery(scope, directory, sdkFor(directory)),
     mcp: (directory: PathKey) => loadMcpQuery(scope, directory, sdkFor(directory)),
     mcpResources: (directory: PathKey) => loadMcpResourcesQuery(scope, directory, sdkFor(directory)),
     lsp: (directory: PathKey) => loadLspQuery(scope, directory, sdkFor(directory)),

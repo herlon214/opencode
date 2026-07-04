@@ -189,6 +189,7 @@ export function createChildStoreManager(input: {
           const lspQuery = useQuery(() => input.queryOptions.lsp(key))
           const providerQuery = useQuery(() => input.queryOptions.providers(key))
           const referenceQuery = useQuery(() => input.queryOptions.references(key))
+          const skillQuery = useQuery(() => input.queryOptions.skills(key))
 
           const child = createStore<State>({
             project: "",
@@ -214,6 +215,9 @@ export function createChildStoreManager(input: {
             command: [],
             get reference() {
               return referenceQuery.isLoading ? [] : (referenceQuery.data ?? [])
+            },
+            get skill() {
+              return skillQuery.isLoading ? [] : (skillQuery.data ?? [])
             },
             session: [],
             sessionTotal: 0,
