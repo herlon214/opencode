@@ -39,7 +39,14 @@ import { withTransientReadRetry } from "@/util/effect-http-client"
 // Custom merge function that concatenates array fields instead of replacing them
 // Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
 function mergeConfig(target: Info, source: Info): Info {
-  return mergeDeep(target, source) as Info
+  const merged = mergeDeep(target, source) as Info
+  // `permission` is an ordered ruleset where removing a rule must propagate.
+  // remeda's mergeDeep can't delete nested keys over JSON, so when the patch
+  // includes `permission`, replace the whole field instead of deep-merging it.
+  if (source.permission !== undefined && "permission" in source) {
+    merged.permission = source.permission
+  }
+  return merged
 }
 
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -157,7 +164,17 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
     return applyEdits(input, edits)
   }
 
-  return Object.entries(patch).reduce((result, [key, value]) => patchJsonc(result, value, [...path, key]), input)
+  return Object.entries(patch).reduce((result, [key, value]) => {
+    // `permission` is an ordered ruleset where removing a rule must propagate.
+    // Replace the whole field instead of recursing into it so deleted keys don't persist.
+    if (key === "permission" && path.length === 0 && isRecord(value)) {
+      const edits = modify(result, path.concat(key), value, {
+        formattingOptions: { insertSpaces: true, tabSize: 2 },
+      })
+      return applyEdits(result, edits)
+    }
+    return patchJsonc(result, value, [...path, key])
+  }, input)
 }
 
 function writable(info: Info) {
@@ -642,7 +659,7 @@ const layer = Layer.effect(
       let changed: boolean
       if (!file.endsWith(".jsonc")) {
         const existing = ConfigParse.schema(ConfigV1.Info, ConfigParse.jsonc(before, file), file)
-        const merged = mergeDeep(writable(existing), patch)
+        const merged = mergeConfig(writable(existing), patch)
         const serialized = JSON.stringify(merged, null, 2)
         changed = serialized !== before
         if (changed) yield* fs.writeFileString(file, serialized).pipe(Effect.orDie)
