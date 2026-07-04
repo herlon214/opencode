@@ -51,6 +51,7 @@ import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { createSessionTabs } from "@/pages/session/helpers"
+import { makeEventListener } from "@solid-primitives/event-listener"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
 import { createPromptAttachments } from "./prompt-input/attachments"
 import { ACCEPTED_FILE_TYPES, pickAttachmentFiles } from "./prompt-input/files"
@@ -222,8 +223,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   let fileInputRef: HTMLInputElement | undefined
   let scrollRef!: HTMLDivElement
   let slashPopoverRef!: HTMLDivElement
-  let restoreEndOnFocus = true
+  let restoreOnFocus = true
   let savedCursor: number | null = null
+  let lastPointerDown = 0
 
   const mirror = { input: false }
   const inset = 56
@@ -604,11 +606,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const handleFocus = () => {
-    if (!restoreEndOnFocus) return
-    restoreEndOnFocus = false
+    if (!restoreOnFocus) return
+    restoreOnFocus = false
     requestAnimationFrame(() => {
       if (document.activeElement !== editorRef) return
-      setCursorPosition(editorRef, prompt.cursor() ?? promptLength(prompt.current()))
+      setCursorPosition(editorRef, savedCursor ?? prompt.cursor() ?? promptLength(prompt.current()))
       queueScroll()
     })
   }
@@ -632,8 +634,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const [composing, setComposing] = createSignal(false)
   const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
 
-  const handleBlur = () => {
+  const handleBlur = (event: FocusEvent) => {
     savedCursor = currentCursor()
+    // During streaming, diff re-renders can detach/reattach the editor,
+    // causing an involuntary blur→focus cycle. Detect this (no relatedTarget
+    // and no recent pointer interaction) so handleFocus restores the cursor.
+    if (event.relatedTarget === null && performance.now() - lastPointerDown > 100) {
+      restoreOnFocus = true
+    }
     closePopover()
     setComposing(false)
   }
@@ -1527,9 +1535,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const newSession = () => props.variant === "new-session"
   const bindEditorRef = (el: HTMLDivElement) => {
     editorRef = el
-    restoreEndOnFocus = true
+    restoreOnFocus = true
     props.ref?.(el)
   }
+
+  onCleanup(makeEventListener(document, "pointerdown", () => { lastPointerDown = performance.now() }, { capture: true }))
   const showAgentControl = createMemo(() => props.controls.agents.visible && props.controls.agents.options.length > 0)
   const agentControlState = createMemo<ComposerAgentControlState>(() => ({
     title: language.t("command.agent.cycle"),
