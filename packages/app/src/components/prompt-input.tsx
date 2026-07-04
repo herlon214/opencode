@@ -79,6 +79,8 @@ import { SessionContextUsage } from "@/components/session-context-usage"
 
 export type PromptInputState = ReturnType<typeof usePrompt>
 
+const OPEN_MODEL_SELECTOR_EVENT = "opencode:model-select"
+
 export type PromptInputHistory = {
   entries: (mode: "normal" | "shell") => PromptHistoryStoredEntry[]
   add: (prompt: Prompt, mode: "normal" | "shell", comments: PromptHistoryComment[]) => void
@@ -635,11 +637,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
 
   const handleBlur = (event: FocusEvent) => {
-    savedCursor = currentCursor()
     // During streaming, diff re-renders can detach/reattach the editor,
     // causing an involuntary blur→focus cycle. Detect this (no relatedTarget
     // and no recent pointer interaction) so handleFocus restores the cursor.
-    if (event.relatedTarget === null && performance.now() - lastPointerDown > 100) {
+    const involuntary = event.relatedTarget === null && performance.now() - lastPointerDown > 100
+    if (!involuntary) savedCursor = currentCursor()
+    if (involuntary) {
       restoreOnFocus = true
     }
     closePopover()
@@ -1068,6 +1071,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const images = imageAttachments()
     const replies = quoteReplies()
     const cursorPosition = getCursorPosition(editorRef)
+    savedCursor = cursorPosition
     const rawText =
       rawParts.length === 1 && rawParts[0]?.type === "text"
         ? rawParts[0].content
@@ -1513,6 +1517,22 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return "Ask anything, / for commands, @ for context..."
   }
 
+  const openUnpaidModelSelector = () => {
+    void import("@/components/dialog-select-model-unpaid").then((x) => {
+      dialog.show(() => <x.DialogSelectModelUnpaid model={props.controls.model.selection} />)
+    })
+  }
+  const openModelSelector = () => {
+    if (!props.controls.model.paid) {
+      openUnpaidModelSelector()
+      return
+    }
+    setStore("modelOpen", true)
+  }
+  const bindRootRef = (el: HTMLDivElement) => {
+    makeEventListener(el, OPEN_MODEL_SELECTOR_EVENT, openModelSelector)
+  }
+
   const modelControlState = createMemo<ComposerModelControlState>(() => ({
     loading: providersLoading(),
     shouldAnimate: providersShouldFadeIn(),
@@ -1524,12 +1544,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     modelName: props.controls.model.selection.current()?.name ?? language.t("dialog.model.select.title"),
     newLayoutDesigns: props.controls.newLayoutDesigns,
     style: control(),
+    open: store.modelOpen,
+    onOpenChange: (open) => setStore("modelOpen", open),
     onClose: restoreFocus,
-    onUnpaidClick: () => {
-      void import("@/components/dialog-select-model-unpaid").then((x) => {
-        dialog.show(() => <x.DialogSelectModelUnpaid model={props.controls.model.selection} />)
-      })
-    },
+    onUnpaidClick: openUnpaidModelSelector,
   }))
 
   const newSession = () => props.variant === "new-session"
@@ -1539,7 +1557,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     props.ref?.(el)
   }
 
-  onCleanup(makeEventListener(document, "pointerdown", () => { lastPointerDown = performance.now() }, { capture: true }))
+  onCleanup(
+    makeEventListener(document, "pointerdown", () => {
+      lastPointerDown = performance.now()
+    }, { capture: true }),
+  )
   const showAgentControl = createMemo(() => props.controls.agents.visible && props.controls.agents.options.length > 0)
   const agentControlState = createMemo<ComposerAgentControlState>(() => ({
     title: language.t("command.agent.cycle"),
@@ -1553,7 +1575,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     },
   }))
   return (
-    <div class="relative size-full flex flex-col gap-0">
+    <div ref={bindRootRef} class="relative size-full flex flex-col gap-0">
       {(promptReady(), null)}
       <PromptPopover
         popover={store.popover}
@@ -2186,6 +2208,8 @@ type ComposerModelControlState = {
   modelName: string
   newLayoutDesigns: boolean
   style: JSX.CSSProperties | undefined
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onClose: () => void
   onUnpaidClick: () => void
 }
@@ -2280,6 +2304,8 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
             fallback={
               <ModelSelectorPopover
                 model={props.state.model}
+                open={props.state.open}
+                onOpenChange={props.state.onOpenChange}
                 triggerAs={Button}
                 triggerProps={{
                   variant: "ghost",
@@ -2298,6 +2324,8 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
           >
             <ModelSelectorPopoverV2
               model={props.state.model}
+              open={props.state.open}
+              onOpenChange={props.state.onOpenChange}
               triggerAs={ButtonV2}
               triggerProps={{
                 variant: "ghost-muted",

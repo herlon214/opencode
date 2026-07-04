@@ -3,7 +3,6 @@ import { useLanguage } from "@/context/language"
 import { useLocal } from "@/context/local"
 import { useSettings } from "@/context/settings"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { getCursorPosition, setCursorPosition } from "@/components/prompt-input/editor-dom"
 import { useSessionLayout } from "./session-layout"
 import { createSessionOwnership } from "./session-ownership"
 
@@ -13,6 +12,8 @@ const withCategory = (category: string) => {
     category,
   })
 }
+
+const OPEN_MODEL_SELECTOR_EVENT = "opencode:model-select"
 
 export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) => {
   const command = useCommand()
@@ -26,24 +27,17 @@ export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) 
   const agentCommand = withCategory(language.t("command.category.agent"))
 
   const chooseModel = async () => {
-    const owner = sessionOwnership.capture()
-    const editor = document.querySelector<HTMLElement>('[data-component="prompt-input"]')
-    const selection = window.getSelection()
-    const cursor =
-      editor && selection?.rangeCount && editor.contains(selection.anchorNode) ? getCursorPosition(editor) : null
-    const restoreComposer = () => {
-      // Kobalte restores focus during its teardown effect; defer past it so the
-      // composer keeps focus and the caret returns to where the user left it.
-      requestAnimationFrame(() => {
-        const editor = document.querySelector<HTMLElement>('[data-component="prompt-input"]')
-        if (!editor) return
-        editor.focus()
-        if (cursor !== null) setCursorPosition(editor, cursor)
-      })
+    const editor =
+      (document.activeElement instanceof HTMLElement &&
+        document.activeElement.closest<HTMLElement>('[data-component="prompt-input"]')) ||
+      document.querySelector<HTMLElement>('[data-component="prompt-input"]')
+    if (editor) {
+      editor.dispatchEvent(new CustomEvent(OPEN_MODEL_SELECTOR_EVENT, { bubbles: true }))
+      return
     }
     const { DialogSelectModel } = await import("@/components/dialog-select-model")
-    owner.run(() => {
-      void dialog.show(() => <DialogSelectModel model={local.model} />, restoreComposer)
+    sessionOwnership.capture().run(() => {
+      void dialog.show(() => <DialogSelectModel model={local.model} />)
     })
   }
 
