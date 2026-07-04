@@ -67,8 +67,10 @@ function footer() {
     api,
     events,
     commits,
-    submit(text: string, mode?: RunPrompt["mode"]) {
-      const next = mode ? { text, parts: [] as RunPrompt["parts"], mode } : { text, parts: [] as RunPrompt["parts"] }
+    submit(text: string, mode?: RunPrompt["mode"], command?: RunPrompt["command"]) {
+      const next: RunPrompt = { text, parts: [] as RunPrompt["parts"] }
+      if (mode) next.mode = mode
+      if (command) next.command = command
       for (const fn of [...prompts]) {
         fn(next)
       }
@@ -463,6 +465,84 @@ describe("run runtime queue", () => {
 
     expect(hit).toBe(true)
     expect(seen).toEqual(["one"])
+  })
+
+  test("queues a command behind an in-flight prompt instead of running it immediately", async () => {
+    const ui = footer()
+    const turns: RunPrompt[] = []
+    let wake: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+
+    const task = runPromptQueue({
+      footer: ui.api,
+      run: async (input) => {
+        turns.push(input)
+        if (turns.length === 1) {
+          await gate
+          return
+        }
+
+        ui.api.close()
+      },
+    })
+
+    ui.submit("hello")
+    await Promise.resolve()
+    expect(turns.map((item) => item.text)).toEqual(["hello"])
+
+    ui.submit("/fmt", undefined, { name: "fmt", arguments: "" })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // The command should NOT have started; it should be queued and visible
+    expect(turns.map((item) => item.text)).toEqual(["hello"])
+    const queued = ui.events.findLast((item) => item.type === "queued.prompts")
+    expect(queued?.type === "queued.prompts" ? queued.prompts.map((item) => item.prompt.text) : []).toEqual(["/fmt"])
+
+    wake?.()
+    await task
+    expect(turns.map((item) => item.text)).toEqual(["hello", "/fmt"])
+  })
+
+  test("queues an ordinary prompt behind an in-flight command", async () => {
+    const ui = footer()
+    const turns: RunPrompt[] = []
+    let wake: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+
+    const task = runPromptQueue({
+      footer: ui.api,
+      run: async (input) => {
+        turns.push(input)
+        if (turns.length === 1) {
+          await gate
+          return
+        }
+
+        ui.api.close()
+      },
+    })
+
+    ui.submit("/fmt", undefined, { name: "fmt", arguments: "" })
+    await Promise.resolve()
+    expect(turns.map((item) => item.text)).toEqual(["/fmt"])
+
+    ui.submit("follow up")
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // The ordinary prompt should NOT have started; it should be queued and visible
+    expect(turns.map((item) => item.text)).toEqual(["/fmt"])
+    const queued = ui.events.findLast((item) => item.type === "queued.prompts")
+    expect(queued?.type === "queued.prompts" ? queued.prompts.map((item) => item.prompt.text) : []).toEqual(["follow up"])
+
+    wake?.()
+    await task
+    expect(turns.map((item) => item.text)).toEqual(["/fmt", "follow up"])
   })
 
   test("propagates run errors", async () => {

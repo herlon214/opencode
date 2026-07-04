@@ -276,14 +276,7 @@ export async function runPromptQueue(input: QueueInput): Promise<void> {
     }
 
     const active = state.active
-    if (
-      active &&
-      active.mode !== "shell" &&
-      !active.command &&
-      prompt.mode !== "shell" &&
-      !prompt.command &&
-      !isNewCommand(prompt.text)
-    ) {
+    if (active && active.mode !== "shell" && prompt.mode !== "shell" && !isNewCommand(prompt.text)) {
       const queued: FooterQueuedPrompt = {
         messageID: MessageID.ascending(),
         partID: PartID.ascending(),
