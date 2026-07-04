@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
 import type { Prompt } from "@/context/prompt"
 
 let createPromptSubmit: typeof import("./submit").createPromptSubmit
+let sendFollowupDraft: typeof import("./submit").sendFollowupDraft
 
 const createdClients: string[] = []
 const createdSessions: string[] = []
@@ -21,6 +22,7 @@ const promoted: Array<{ directory: string; sessionID: string }> = []
 const sentShell: string[] = []
 const syncedDirectories: string[] = []
 const promotedDrafts: Array<{ draftID: string; server: string; sessionId: string }> = []
+const commandRequests: Array<{ command?: string; arguments?: string }> = []
 
 let params: { id?: string } = {}
 let search: { draftId?: string } = {}
@@ -65,7 +67,10 @@ const clientFor = (directory: string) => {
       },
       prompt: async () => ({ data: undefined }),
       promptAsync: async () => ({ data: undefined }),
-      command: async () => ({ data: undefined }),
+      command: async (input: { command?: string; arguments?: string }) => {
+        commandRequests.push({ command: input.command, arguments: input.arguments })
+        return { data: undefined }
+      },
       abort: async () => ({ data: undefined }),
     },
     worktree: {
@@ -230,6 +235,7 @@ beforeAll(async () => {
 
   const mod = await import("./submit")
   createPromptSubmit = mod.createPromptSubmit
+  sendFollowupDraft = mod.sendFollowupDraft
 })
 
 beforeEach(() => {
@@ -240,6 +246,7 @@ beforeEach(() => {
   optimisticSeeded.length = 0
   promoted.length = 0
   promotedDrafts.length = 0
+  commandRequests.length = 0
   params = {}
   search = {}
   sentShell.length = 0
@@ -434,5 +441,29 @@ describe("prompt submit worktree selection", () => {
 
     expect(queued).toEqual([promptValue])
     expect(optimistic).toEqual([])
+  })
+
+  test("sends slash follow-ups through configured commands", async () => {
+    const ok = await sendFollowupDraft({
+      client: clientFor("/repo/main") as unknown as Parameters<typeof sendFollowupDraft>[0]["client"],
+      sync: {
+        data: { command: [{ name: "review" }] },
+        session: { optimistic: { add: () => undefined, remove: () => undefined } },
+      } as unknown as Parameters<typeof sendFollowupDraft>[0]["sync"],
+      serverSync: {
+        session: { set: () => undefined },
+      } as unknown as Parameters<typeof sendFollowupDraft>[0]["serverSync"],
+      draft: {
+        sessionID: "session-1",
+        sessionDirectory: "/repo/main",
+        prompt: [{ type: "text", content: "/review commit", start: 0, end: 14 }],
+        context: [],
+        agent: "agent",
+        model: { providerID: "provider", modelID: "model" },
+      },
+    })
+
+    expect(ok).toBe(true)
+    expect(commandRequests).toEqual([{ command: "review", arguments: "commit" }])
   })
 })

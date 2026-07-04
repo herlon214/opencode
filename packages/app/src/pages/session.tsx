@@ -1675,7 +1675,14 @@ export default function Page() {
         })
 
       if (item.commandId) {
-        command.trigger(item.commandId, "slash")
+        try {
+          await command.trigger(item.commandId, "slash")
+        } catch (err) {
+          setFollowup("failed", input.sessionID, input.id)
+          fail(err)
+          return
+        }
+
         removeItem()
         if (input.manual) owner.run(resumeScroll)
         return
@@ -1797,13 +1804,10 @@ export default function Page() {
           model,
         }),
       queueCommand: (name: string) => {
-        if (sync().data.command.some((cmd) => cmd.name === name)) {
-          queueCommand(name, `/${name}`)
-          return
-        }
         const builtin = command.options.find((opt) => opt.slash === name)
         queueCommand(builtin?.id ?? name, builtin?.title ?? `/${name}`)
       },
+      isCommandPrompt: (name: string) => sync().data.command.some((cmd) => cmd.name === name),
     }
   }
 

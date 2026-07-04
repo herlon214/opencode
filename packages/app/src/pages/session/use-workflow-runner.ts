@@ -17,6 +17,7 @@ type Input = {
   sessionID: string
   queuePrompt: (text: string) => void
   queueCommand: (command: string) => void
+  isCommandPrompt: (command: string) => boolean
 }
 
 export function createWorkflowRunner() {
@@ -40,8 +41,16 @@ export function createWorkflowRunner() {
   }
 
   const queueStep = (step: WorkflowStep, input: Input) => {
-    if (step.type === "prompt") input.queuePrompt(step.text)
-    else if (step.type === "command") input.queueCommand(step.command)
+    if (step.type === "prompt") {
+      input.queuePrompt(step.text)
+      return
+    }
+    if (step.type !== "command") return
+    if (input.isCommandPrompt(step.command)) {
+      input.queuePrompt(`/${step.command}`)
+      return
+    }
+    input.queueCommand(step.command)
   }
 
   const advance = (sessionID: string, input: Input) => {
