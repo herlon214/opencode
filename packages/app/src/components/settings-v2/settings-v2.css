@@ -661,3 +661,59 @@
   line-height: 1;
   color: var(--v2-state-fg-danger);
 }
+
+.settings-v2-folder-access-description {
+  font-size: 11px;
+  font-weight: 440;
+  line-height: 1.4;
+  color: var(--v2-text-text-muted);
+  margin-top: -12px;
+  max-width: 520px;
+}
+
+.settings-v2-folder-access-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-v2-folder-access-path span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--v2-font-mono, monospace);
+  font-size: 12px;
+}
+
+.settings-v2-folder-access-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.settings-v2-folder-access-label {
+  font-size: 11px;
+  font-weight: 440;
+  color: var(--v2-text-text-muted);
+}
+
+.settings-v2-folder-access-add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .settings-v2-folder-access-add {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.settings-v2-folder-access-add-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}

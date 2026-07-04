@@ -30,6 +30,7 @@ import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { Link } from "./link"
 import { SettingsList } from "./settings-list"
+import { SettingsFolderAccess } from "./settings-folder-access"
 
 let demoSoundState = {
   cleanup: undefined as (() => void) | undefined,
@@ -448,6 +449,12 @@ export const SettingsGeneral: Component = () => {
     </div>
   )
 
+  const FolderAccessSection = () => (
+    <div class="flex flex-col gap-1">
+      <SettingsFolderAccess />
+    </div>
+  )
+
   const AppearanceSection = () => (
     <div class="flex flex-col gap-1">
       <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.appearance")}</h3>
@@ -753,6 +760,8 @@ export const SettingsGeneral: Component = () => {
 
       <div class="flex flex-col gap-8 w-full">
         <GeneralSection />
+
+        <FolderAccessSection />
 
         <AppearanceSection />
 

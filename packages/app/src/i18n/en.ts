@@ -1051,6 +1051,22 @@ export const dict = {
   "settings.permissions.section.tools": "Tools",
   "settings.permissions.toast.updateFailed.title": "Failed to update permissions",
 
+  "settings.folderAccess.title": "Folder access",
+  "settings.folderAccess.description":
+    "Give agents permanent read or write access to folders outside the project, so you don't have to approve them each time. Applies globally to all projects on this machine.",
+  "settings.folderAccess.button.add": "Add folder",
+  "settings.folderAccess.picker.title": "Choose a folder to allow",
+  "settings.folderAccess.input.placeholder": "/absolute/path/to/folder",
+  "settings.folderAccess.row.write": "Write",
+  "settings.folderAccess.row.write.description":
+    "Off = read-only access. On = read and write/modify files in this folder.",
+  "settings.folderAccess.row.remove": "Remove folder",
+  "settings.folderAccess.toast.duplicate": "That folder is already in the list",
+  "settings.folderAccess.toast.invalid": "Enter an absolute path (or one starting with ~/ or $HOME)",
+  "settings.folderAccess.toast.shorthand":
+    "Your global permission is set to a single allow/ask/deny value. Switch it to per-tool rules before managing folder access here, otherwise that setting will be overwritten.",
+  "settings.folderAccess.toast.failed": "Failed to update folder access",
+
   "settings.permissions.action.allow": "Allow",
   "settings.permissions.action.ask": "Ask",
   "settings.permissions.action.deny": "Deny",
