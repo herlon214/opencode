@@ -14,6 +14,7 @@ import { createEffect, createMemo, createSignal, For, on, ParentProps, Show } fr
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { AssistantParts, Message, MessageDivider, PART_MAPPING, type UserActions } from "./message-part"
+import { streamingDuration } from "./message-part-reasoning"
 import { Card } from "@opencode-ai/ui/card"
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
@@ -352,6 +353,21 @@ export function SessionTurn(
   const turnOutputTokens = createMemo(() =>
     assistantMessages().reduce<number>((sum, item) => sum + (item.tokens.output ?? 0), 0),
   )
+  // Streaming window: excludes pre-stream wait, tool execution, and idle gaps
+  // so tokens/sec reflects the true generation rate.
+  const turnStreamingDurationMs = createMemo(() => {
+    let total = 0
+    for (const message of assistantMessages()) {
+      total += streamingDuration(list(data.store.part?.[message.id], emptyParts))
+    }
+    return total > 0 ? total : undefined
+  })
+  const turnStreamingTokens = createMemo(() =>
+    assistantMessages().reduce<number>(
+      (sum, item) => sum + (item.tokens.output ?? 0) + (item.tokens.reasoning ?? 0),
+      0,
+    ),
+  )
   const assistantDerived = createMemo(() => {
     let visible = 0
     let reason: string | undefined
@@ -418,6 +434,8 @@ export function SessionTurn(
                     showAssistantCopyPartID={assistantCopyPartID()}
                     turnDurationMs={turnDurationMs()}
                     turnOutputTokens={turnOutputTokens()}
+                    turnStreamingDurationMs={turnStreamingDurationMs()}
+                    turnStreamingTokens={turnStreamingTokens()}
                     working={working()}
                     showReasoningSummaries={showReasoningSummaries()}
                     shellToolDefaultOpen={props.shellToolDefaultOpen}

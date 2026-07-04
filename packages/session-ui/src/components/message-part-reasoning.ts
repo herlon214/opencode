@@ -52,3 +52,22 @@ export function reasoningDuration(part: { time: { start: number; end?: number } 
   if (end === undefined) return undefined
   return Math.max(0, end - part.time.start)
 }
+
+// Sum of completed streaming intervals across text and reasoning parts.
+// Excludes pre-stream wait, tool execution, and idle gaps between parts,
+// so dividing generated tokens by this value reflects the true streaming
+// rate rather than the wall-clock turn duration.
+export function streamingDuration(
+  parts: ReadonlyArray<{ type: string; time?: { start?: number; end?: number } | Record<string, unknown> }>,
+): number {
+  let total = 0
+  for (const part of parts) {
+    if (part.type !== "text" && part.type !== "reasoning") continue
+    const time = part.time
+    if (!time) continue
+    if (typeof time.start !== "number" || typeof time.end !== "number") continue
+    const delta = time.end - time.start
+    if (delta > 0) total += delta
+  }
+  return total
+}

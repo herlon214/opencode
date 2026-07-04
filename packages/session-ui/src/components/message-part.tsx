@@ -226,6 +226,8 @@ export interface MessagePartProps {
   showAssistantCopyPartID?: string | null
   turnDurationMs?: number
   turnOutputTokens?: number
+  turnStreamingDurationMs?: number
+  turnStreamingTokens?: number
   useV2Actions?: boolean
   showReasoningSummaries?: boolean
 }
@@ -727,6 +729,8 @@ export function AssistantParts(props: {
   showAssistantCopyPartID?: string | null
   turnDurationMs?: number
   turnOutputTokens?: number
+  turnStreamingDurationMs?: number
+  turnStreamingTokens?: number
   useV2Actions?: boolean
   working?: boolean
   showReasoningSummaries?: boolean
@@ -813,6 +817,8 @@ export function AssistantParts(props: {
                         showAssistantCopyPartID={props.showAssistantCopyPartID}
                         turnDurationMs={props.turnDurationMs}
                         turnOutputTokens={props.turnOutputTokens}
+                        turnStreamingDurationMs={props.turnStreamingDurationMs}
+                        turnStreamingTokens={props.turnStreamingTokens}
                         useV2Actions={props.useV2Actions}
                         defaultOpen={partDefaultOpen(item()!, props.shellToolDefaultOpen, props.editToolDefaultOpen)}
                       />
@@ -1427,6 +1433,8 @@ export function Part(props: MessagePartProps) {
         showAssistantCopyPartID={props.showAssistantCopyPartID}
         turnDurationMs={props.turnDurationMs}
         turnOutputTokens={props.turnOutputTokens}
+        turnStreamingDurationMs={props.turnStreamingDurationMs}
+        turnStreamingTokens={props.turnStreamingTokens}
         useV2Actions={props.useV2Actions}
         showReasoningSummaries={props.showReasoningSummaries}
       />
@@ -1672,11 +1680,23 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
   })
 
   const tokensPerSecond = createMemo(() => {
-    const ms = durationMs()
-    if (!(ms > 0)) return ""
     if (props.message.role !== "assistant") return ""
     const message = props.message as AssistantMessage
-    const tokens = typeof props.turnOutputTokens === "number" ? props.turnOutputTokens : message.tokens.output
+    // Prefer the streaming window (text + reasoning part time.start->time.end),
+    // which excludes pre-stream server wait, tool execution, and idle gaps.
+    // Fall back to the full turn duration only when per-part streaming times
+    // are unavailable (e.g. legacy messages without part.time).
+    const streamingMs = props.turnStreamingDurationMs
+    const streamingTokens = props.turnStreamingTokens
+    const hasStreaming =
+      typeof streamingMs === "number" && typeof streamingTokens === "number" && streamingMs > 0 && streamingTokens > 0
+    const ms = hasStreaming ? streamingMs : durationMs()
+    if (!(ms > 0)) return ""
+    const tokens = hasStreaming
+      ? streamingTokens
+      : typeof props.turnOutputTokens === "number"
+        ? props.turnOutputTokens
+        : message.tokens.output
     if (!(tokens > 0)) return ""
     const rate = Math.round(tokens / (ms / 1000))
     if (!(rate > 0)) return ""

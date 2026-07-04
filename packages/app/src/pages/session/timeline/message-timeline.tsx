@@ -81,7 +81,7 @@ import { scheduleConnectedMeasure } from "./measure"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
 import type { PartGroup } from "@opencode-ai/session-ui/message-part"
-import { formatDuration } from "@opencode-ai/session-ui/message-part-reasoning"
+import { formatDuration, streamingDuration } from "@opencode-ai/session-ui/message-part-reasoning"
 import { filterVirtualIndexes } from "./virtual-items"
 
 const emptyMessages: MessageType[] = []
@@ -1005,6 +1005,21 @@ export function MessageTimeline(props: {
       0,
     )
   }
+  // Streaming window: excludes pre-stream wait, tool execution, and idle gaps
+  // so tokens/sec reflects the true generation rate.
+  const turnStreamingDurationMs = (userMessageID: string) => {
+    let total = 0
+    for (const message of assistantMessagesByParent().get(userMessageID) ?? emptyAssistantMessages) {
+      total += streamingDuration(getMsgParts(message.id))
+    }
+    return total > 0 ? total : undefined
+  }
+  const turnStreamingTokens = (userMessageID: string) => {
+    return (assistantMessagesByParent().get(userMessageID) ?? emptyAssistantMessages).reduce<number>(
+      (sum, item) => sum + (item.tokens.output ?? 0) + (item.tokens.reasoning ?? 0),
+      0,
+    )
+  }
 
   const assistantCopyPartID = (userMessageID: string) => {
     if (workingTurn(userMessageID)) return null
@@ -1076,6 +1091,8 @@ export function MessageTimeline(props: {
                 showAssistantCopyPartID={assistantCopyPartID(userMessageID())}
                 turnDurationMs={turnDurationMs(userMessageID())}
                 turnOutputTokens={turnOutputTokens(userMessageID())}
+                turnStreamingDurationMs={turnStreamingDurationMs(userMessageID())}
+                turnStreamingTokens={turnStreamingTokens(userMessageID())}
                 useV2Actions={settings.general.newLayoutDesigns()}
                 showReasoningSummaries={settings.general.showReasoningSummaries()}
                 defaultOpen={defaultOpen()}
