@@ -28,16 +28,16 @@ describe("streamingDuration", () => {
     expect(streamingDuration([{ type: "text" }])).toBe(0)
   })
 
-  test("sums completed text and reasoning intervals", () => {
+  test("uses earliest start to latest end across text and reasoning parts", () => {
     expect(
       streamingDuration([
         { type: "text", time: { start: 1_000, end: 3_000 } },
         { type: "reasoning", time: { start: 4_000, end: 5_500 } },
       ]),
-    ).toBe(3_500)
+    ).toBe(4_500)
   })
 
-  test("skips non-positive deltas (end <= start)", () => {
+  test("skips non-positive deltas (end <= start) when finding bounds", () => {
     expect(
       streamingDuration([
         { type: "text", time: { start: 1_000, end: 1_000 } },
@@ -47,13 +47,13 @@ describe("streamingDuration", () => {
     ).toBe(1_000)
   })
 
-  test("excludes idle gaps between parts from the total", () => {
+  test("includes idle gaps between parts in the contiguous window", () => {
     expect(
       streamingDuration([
         { type: "text", time: { start: 1_000, end: 2_000 } },
         { type: "reasoning", time: { start: 10_000, end: 11_000 } },
       ]),
-    ).toBe(2_000)
+    ).toBe(10_000)
   })
 
   test("tolerates foreign time shapes (e.g. { created }) without crashing", () => {
@@ -65,9 +65,9 @@ describe("streamingDuration", () => {
     ).toBe(3_000)
   })
 
-  test("regression: full turn wall-clock wait is NOT counted as streaming", () => {
-    // Simulates a turn that waited 8s for the server, then streamed 2s of text.
-    // The pre-stream wait must not contribute to the streaming duration.
+  test("regression: pre-stream wait is NOT counted, only first-token to last-token", () => {
+    // A turn that waited 8s for the server, then streamed 2s of text.
+    // The window starts at the first token (8s), not at request dispatch (0s).
     const parts = [{ type: "text", time: { start: 8_000, end: 10_000 } }]
     expect(streamingDuration(parts)).toBe(2_000)
   })

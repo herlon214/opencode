@@ -53,21 +53,24 @@ export function reasoningDuration(part: { time: { start: number; end?: number } 
   return Math.max(0, end - part.time.start)
 }
 
-// Sum of completed streaming intervals across text and reasoning parts.
-// Excludes pre-stream wait, tool execution, and idle gaps between parts,
-// so dividing generated tokens by this value reflects the true streaming
-// rate rather than the wall-clock turn duration.
+// Contiguous streaming window across text and reasoning parts: from the
+// earliest part start to the latest part end. This mirrors the standard
+// TPS methodology (total_duration - time_to_first_token), isolating
+// generation from pre-stream wait while including inter-part gaps.
 export function streamingDuration(
   parts: ReadonlyArray<{ type: string; time?: { start?: number; end?: number } | Record<string, unknown> }>,
 ): number {
-  let total = 0
+  let firstStart: number | undefined
+  let lastEnd: number | undefined
   for (const part of parts) {
     if (part.type !== "text" && part.type !== "reasoning") continue
     const time = part.time
     if (!time) continue
     if (typeof time.start !== "number" || typeof time.end !== "number") continue
-    const delta = time.end - time.start
-    if (delta > 0) total += delta
+    if (time.end <= time.start) continue
+    if (firstStart === undefined || time.start < firstStart) firstStart = time.start
+    if (lastEnd === undefined || time.end > lastEnd) lastEnd = time.end
   }
-  return total
+  if (firstStart === undefined || lastEnd === undefined) return 0
+  return Math.max(0, lastEnd - firstStart)
 }
