@@ -2,7 +2,7 @@ import { Component, For, Show, createMemo, createSignal } from "solid-js"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { Switch } from "@opencode-ai/ui/v2/switch-v2"
+import { SegmentedControlV2, SegmentedControlItemV2 } from "@opencode-ai/ui/v2/segmented-control-v2"
 import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
@@ -117,17 +117,22 @@ export const SettingsFolderAccessV2: Component = () => {
                     <span title={entry.path}>{entry.path}</span>
                   </div>
                 }
-                description={language.t("settings.folderAccess.row.write.description")}
               >
                 <div class="settings-v2-folder-access-control">
-                  <span class="settings-v2-folder-access-label">
-                    {language.t("settings.folderAccess.row.write")}
-                  </span>
-                  <Switch
-                    checked={entry.write}
+                  <SegmentedControlV2
+                    class="settings-v2-folder-access-segments"
+                    value={entry.write ? "write" : "read"}
                     disabled={saving()}
-                    onChange={(checked) => void toggleWrite(entry.path, checked)}
-                  />
+                    onChange={(value) => void toggleWrite(entry.path, value === "write")}
+                    aria-label={language.t("settings.folderAccess.row.readWrite")}
+                  >
+                    <SegmentedControlItemV2 value="read">
+                      {language.t("settings.folderAccess.row.readonly")}
+                    </SegmentedControlItemV2>
+                    <SegmentedControlItemV2 value="write">
+                      {language.t("settings.folderAccess.row.readWrite")}
+                    </SegmentedControlItemV2>
+                  </SegmentedControlV2>
                   <IconButtonV2
                     type="button"
                     variant="ghost-muted"

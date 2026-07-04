@@ -689,14 +689,16 @@
 .settings-v2-folder-access-control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
-.settings-v2-folder-access-label {
-  font-size: 11px;
-  font-weight: 440;
-  color: var(--v2-text-text-muted);
+.settings-v2-folder-access-segments {
+  width: auto;
+}
+
+.settings-v2-folder-access-segments [data-slot="segmented-control-v2-item"] {
+  padding: 0 10px;
 }
 
 .settings-v2-folder-access-add {

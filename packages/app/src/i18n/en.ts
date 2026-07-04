@@ -1057,9 +1057,8 @@ export const dict = {
   "settings.folderAccess.button.add": "Add folder",
   "settings.folderAccess.picker.title": "Choose a folder to allow",
   "settings.folderAccess.input.placeholder": "/absolute/path/to/folder",
-  "settings.folderAccess.row.write": "Write",
-  "settings.folderAccess.row.write.description":
-    "Off = read-only access. On = read and write/modify files in this folder.",
+  "settings.folderAccess.row.readonly": "Read-only",
+  "settings.folderAccess.row.readWrite": "Read & write",
   "settings.folderAccess.row.remove": "Remove folder",
   "settings.folderAccess.toast.duplicate": "That folder is already in the list",
   "settings.folderAccess.toast.invalid": "Enter an absolute path (or one starting with ~/ or $HOME)",

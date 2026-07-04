@@ -2,7 +2,7 @@ import { Component, For, Show, createMemo, createSignal } from "solid-js"
 import { Button } from "@opencode-ai/ui/button"
 import { Icon } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Switch } from "@opencode-ai/ui/switch"
+import { RadioGroup } from "@opencode-ai/ui/radio-group"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useServerSync } from "@/context/server-sync"
@@ -115,16 +115,19 @@ export const SettingsFolderAccess: Component = () => {
                     </span>
                   </div>
                   <div class="flex items-center gap-3 shrink-0">
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-12-regular text-text-weak">
-                        {language.t("settings.folderAccess.row.write")}
-                      </span>
-                      <Switch
-                        checked={entry.write}
-                        disabled={saving()}
-                        onChange={(checked) => void toggleWrite(entry.path, checked)}
-                      />
-                    </div>
+                    <RadioGroup
+                      size="small"
+                      pad="none"
+                      options={["read", "write"] as const}
+                      current={entry.write ? "write" : "read"}
+                      onSelect={(value) => void toggleWrite(entry.path, value === "write")}
+                      label={(v) =>
+                        v === "write"
+                          ? language.t("settings.folderAccess.row.readWrite")
+                          : language.t("settings.folderAccess.row.readonly")
+                      }
+                      aria-label={language.t("settings.folderAccess.row.readWrite")}
+                    />
                     <IconButton
                       icon="trash"
                       variant="ghost"
