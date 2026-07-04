@@ -99,17 +99,38 @@ const layer = Layer.effect(
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {
-        commands[name] = {
-          name,
-          agent: command.agent,
-          model: command.model,
-          description: command.description,
-          source: "command",
-          get template() {
-            return command.template
-          },
-          subtask: command.subtask,
-          hints: hints(command.template),
+        const existing = commands[name]
+        if (existing) {
+          const mergedTemplate = command.template ?? existing.template
+          commands[name] = {
+            ...existing,
+            agent: command.agent ?? existing.agent,
+            model: command.model ?? existing.model,
+            description: command.description ?? existing.description,
+            subtask: command.subtask ?? existing.subtask,
+            get template() {
+              return mergedTemplate
+            },
+            hints: existing.hints,
+          }
+        } else {
+          if (command.template === undefined) {
+            yield* Effect.logWarning("command config has no template and no built-in to merge onto", { name })
+            continue
+          }
+          const template = command.template
+          commands[name] = {
+            name,
+            agent: command.agent,
+            model: command.model,
+            description: command.description,
+            source: "command",
+            get template() {
+              return template
+            },
+            subtask: command.subtask,
+            hints: hints(template),
+          }
         }
       }
 
