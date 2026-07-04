@@ -13890,6 +13890,59 @@ export type V2StatsByModelResponses = {
 
 export type V2StatsByModelResponse = V2StatsByModelResponses[keyof V2StatsByModelResponses]
 
+export type V2StatsTimeseriesByModelData = {
+  body?: never
+  path?: never
+  query?: {
+    location?: {
+      directory?: string
+      workspace?: string
+    }
+    days?: string
+  }
+  url: "/api/stats/timeseries-by-model"
+}
+
+export type V2StatsTimeseriesByModelErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+}
+
+export type V2StatsTimeseriesByModelError = V2StatsTimeseriesByModelErrors[keyof V2StatsTimeseriesByModelErrors]
+
+export type V2StatsTimeseriesByModelResponses = {
+  /**
+   * Success
+   */
+  200: {
+    location: LocationInfo
+    data: Array<{
+      date: string
+      model: string
+      providerID: string
+      modelID: string
+      cost: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      sessions: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      tokens: {
+        input: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        output: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        reasoning: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        cache_read: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        cache_write: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      }
+    }>
+  }
+}
+
+export type V2StatsTimeseriesByModelResponse =
+  V2StatsTimeseriesByModelResponses[keyof V2StatsTimeseriesByModelResponses]
+
 export type V2StatsByAgentData = {
   body?: never
   path?: never

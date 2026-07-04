@@ -27,6 +27,25 @@ export const TOKEN_CATEGORY_COLORS: Record<TokenCategoryKey, string> = {
   cache_write: CHART_COLORS.cache_write,
 }
 
+const MODEL_PALETTE = [
+  "#7698fd",
+  "#49c970",
+  "#ff8648",
+  "#9e99f7",
+  "#f26cb2",
+  "#00c5df",
+  "#f6c251",
+  "#f17471",
+  "#7ad7f0",
+  "#c8b6ff",
+  "#9bf37e",
+  "#ffb27a",
+]
+
+export function modelColorMap(labels: string[]): Map<string, string> {
+  return new Map(labels.map((label, index) => [label, MODEL_PALETTE[index % MODEL_PALETTE.length]]))
+}
+
 export function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`

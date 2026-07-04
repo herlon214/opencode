@@ -118,6 +118,8 @@ import type {
   StatsTimeseriesOutput,
   StatsByModelInput,
   StatsByModelOutput,
+  StatsTimeseriesByModelInput,
+  StatsTimeseriesByModelOutput,
   StatsByAgentInput,
   StatsByAgentOutput,
 } from "./types"
@@ -1025,6 +1027,18 @@ export function make(options: ClientOptions) {
           {
             method: "GET",
             path: `/api/stats/by-model`,
+            query: { location: input?.["location"], days: input?.["days"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      timeseriesByModel: (input?: StatsTimeseriesByModelInput, requestOptions?: RequestOptions) =>
+        request<StatsTimeseriesByModelOutput>(
+          {
+            method: "GET",
+            path: `/api/stats/timeseries-by-model`,
             query: { location: input?.["location"], days: input?.["days"] },
             successStatus: 200,
             declaredStatuses: [401, 400],

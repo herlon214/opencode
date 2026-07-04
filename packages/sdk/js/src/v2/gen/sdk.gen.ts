@@ -399,6 +399,8 @@ import type {
   V2StatsByModelResponses,
   V2StatsOverviewErrors,
   V2StatsOverviewResponses,
+  V2StatsTimeseriesByModelErrors,
+  V2StatsTimeseriesByModelResponses,
   V2StatsTimeseriesErrors,
   V2StatsTimeseriesResponses,
   VcsApplyErrors,
@@ -7240,6 +7242,43 @@ export class Stats extends HeyApiClient {
     )
     return (options?.client ?? this.client).get<V2StatsByModelResponses, V2StatsByModelErrors, ThrowOnError>({
       url: "/api/stats/by-model",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get daily usage by model
+   *
+   * Daily breakdown of tokens and cost grouped by model, filterable by number of days.
+   */
+  public timeseriesByModel<ThrowOnError extends boolean = false>(
+    parameters?: {
+      location?: {
+        directory?: string
+        workspace?: string
+      }
+      days?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "location" },
+            { in: "query", key: "days" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      V2StatsTimeseriesByModelResponses,
+      V2StatsTimeseriesByModelErrors,
+      ThrowOnError
+    >({
+      url: "/api/stats/timeseries-by-model",
       ...options,
       ...params,
     })

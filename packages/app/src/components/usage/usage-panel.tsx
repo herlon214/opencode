@@ -11,6 +11,7 @@ import {
   formatCost,
   formatCostShort,
   formatNumber,
+  modelColorMap,
   TOKEN_CATEGORY_COLORS,
   TOKEN_CATEGORY_KEYS,
   TOKEN_CATEGORY_LABELS,
@@ -41,6 +42,22 @@ type TimeseriesPoint = {
     cache_write: number | string
   }
   sessions: number | string
+}
+
+type TimeseriesByModelPoint = {
+  date: string
+  model: string
+  providerID: string
+  modelID: string
+  cost: number | string
+  sessions: number | string
+  tokens: {
+    input: number | string
+    output: number | string
+    reasoning: number | string
+    cache_read: number | string
+    cache_write: number | string
+  }
 }
 
 type ByModelItem = {
@@ -98,7 +115,9 @@ async function mapUsageDirectories<A>(directories: string[], load: (directory: s
 }
 
 function totalTokens(tokens: OverviewData["total_tokens"]): number {
-  return num(tokens.input) + num(tokens.output) + num(tokens.reasoning) + num(tokens.cache_read) + num(tokens.cache_write)
+  return (
+    num(tokens.input) + num(tokens.output) + num(tokens.reasoning) + num(tokens.cache_read) + num(tokens.cache_write)
+  )
 }
 
 function mergeOverview(items: OverviewData[]): OverviewData {
@@ -141,6 +160,30 @@ function mergeTimeseries(items: TimeseriesPoint[][]): TimeseriesPoint[] {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
+function mergeTimeseriesByModel(items: TimeseriesByModelPoint[][]): TimeseriesByModelPoint[] {
+  const byKey = new Map<string, TimeseriesByModelPoint>()
+  items.flat().forEach((item) => {
+    const key = `${item.date}\0${item.model}`
+    const current = byKey.get(key)
+    byKey.set(key, {
+      date: item.date,
+      model: item.model,
+      providerID: item.providerID,
+      modelID: item.modelID,
+      cost: num(current?.cost ?? 0) + num(item.cost),
+      sessions: num(current?.sessions ?? 0) + num(item.sessions),
+      tokens: {
+        input: num(current?.tokens.input ?? 0) + num(item.tokens.input),
+        output: num(current?.tokens.output ?? 0) + num(item.tokens.output),
+        reasoning: num(current?.tokens.reasoning ?? 0) + num(item.tokens.reasoning),
+        cache_read: num(current?.tokens.cache_read ?? 0) + num(item.tokens.cache_read),
+        cache_write: num(current?.tokens.cache_write ?? 0) + num(item.tokens.cache_write),
+      },
+    })
+  })
+  return [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date) || num(b.cost) - num(a.cost))
+}
+
 function sessionsTimeseries(sessions: Session[] | undefined, days: number | undefined): TimeseriesPoint[] {
   const cutoff = days && days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0
   return mergeTimeseries(
@@ -160,6 +203,38 @@ function sessionsTimeseries(sessions: Session[] | undefined, days: number | unde
           sessions: 1,
         },
       ]),
+  )
+}
+
+function sessionsTimeseriesByModel(
+  sessions: Session[] | undefined,
+  days: number | undefined,
+): TimeseriesByModelPoint[] {
+  const cutoff = days && days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0
+  return mergeTimeseriesByModel(
+    (sessions ?? [])
+      .filter((session) => session.time.updated >= cutoff && session.model)
+      .map((session) => {
+        const model = session.model!
+        const label = `${model.providerID}/${model.id}`
+        return [
+          {
+            date: new Date(session.time.updated).toISOString().slice(0, 10),
+            model: label,
+            providerID: model.providerID,
+            modelID: model.id,
+            cost: session.cost ?? 0,
+            sessions: 1,
+            tokens: {
+              input: session.tokens?.input ?? 0,
+              output: session.tokens?.output ?? 0,
+              reasoning: session.tokens?.reasoning ?? 0,
+              cache_read: session.tokens?.cache.read ?? 0,
+              cache_write: session.tokens?.cache.write ?? 0,
+            },
+          },
+        ]
+      }),
   )
 }
 
@@ -234,6 +309,7 @@ export function UsagePanel(props: {
     mode: "tokens" as "cost" | "tokens",
     range: 7 as 7 | 30 | 90 | 0,
     costGroup: "model" as "model" | "provider",
+    tokenGroup: "model" as "model" | "category",
   })
 
   const daysParam = createMemo(() => (state.range > 0 ? String(state.range) : undefined))
@@ -258,8 +334,8 @@ export function UsagePanel(props: {
     queryKey: ["stats", "overview", serverKey(), directories(), daysParam()],
     queryFn: async () => {
       const result = await mapUsageDirectories(directories(), async (directory) => {
-        const response = await client()!.v2.stats
-          .overview({ location: { directory }, days: daysParam() })
+        const response = await client()!
+          .v2.stats.overview({ location: { directory }, days: daysParam() })
           .catch(() => undefined)
         return response?.data?.data as unknown as OverviewData | undefined
       })
@@ -273,8 +349,8 @@ export function UsagePanel(props: {
     queryKey: ["stats", "timeseries", serverKey(), directories(), daysParam()],
     queryFn: async () => {
       const result = await mapUsageDirectories(directories(), async (directory) => {
-        const response = await client()!.v2.stats
-          .timeseries({ location: { directory }, days: daysParam() })
+        const response = await client()!
+          .v2.stats.timeseries({ location: { directory }, days: daysParam() })
           .catch(() => undefined)
         return response?.data?.data as unknown as TimeseriesPoint[] | undefined
       })
@@ -288,8 +364,8 @@ export function UsagePanel(props: {
     queryKey: ["stats", "byModel", serverKey(), directories(), daysParam()],
     queryFn: async () => {
       const result = await mapUsageDirectories(directories(), async (directory) => {
-        const response = await client()!.v2.stats
-          .byModel({ location: { directory }, days: daysParam() })
+        const response = await client()!
+          .v2.stats.byModel({ location: { directory }, days: daysParam() })
           .catch(() => undefined)
         return response?.data?.data as unknown as ByModelItem[] | undefined
       })
@@ -299,12 +375,27 @@ export function UsagePanel(props: {
     placeholderData: (previousData) => previousData,
   }))
 
+  const timeseriesByModelQuery = useQuery(() => ({
+    queryKey: ["stats", "timeseriesByModel", serverKey(), directories(), daysParam()],
+    queryFn: async () => {
+      const result = await mapUsageDirectories(directories(), async (directory) => {
+        const response = await client()!
+          .v2.stats.timeseriesByModel({ location: { directory }, days: daysParam() })
+          .catch(() => undefined)
+        return response?.data?.data as unknown as TimeseriesByModelPoint[] | undefined
+      })
+      return mergeTimeseriesByModel(result)
+    },
+    enabled: clientReady(),
+    placeholderData: (previousData) => previousData,
+  }))
+
   const byAgentQuery = useQuery(() => ({
     queryKey: ["stats", "byAgent", serverKey(), directories(), daysParam()],
     queryFn: async () => {
       const result = await mapUsageDirectories(directories(), async (directory) => {
-        const response = await client()!.v2.stats
-          .byAgent({ location: { directory }, days: daysParam() })
+        const response = await client()!
+          .v2.stats.byAgent({ location: { directory }, days: daysParam() })
           .catch(() => undefined)
         return response?.data?.data as unknown as ByAgentItem[] | undefined
       })
@@ -345,7 +436,30 @@ export function UsagePanel(props: {
     return data
   })
 
-  const loading = createMemo(() => !overviewQuery.data && (overviewQuery.isLoading || timeseriesQuery.isLoading))
+  const timeseriesByModelData = createMemo(() => {
+    const data = timeseriesByModelQuery.data ?? []
+    const sessionData = sessionsTimeseriesByModel(props.sessions, state.range > 0 ? state.range : undefined)
+    if (sessionData.length > data.length) return sessionData
+    return data
+  })
+
+  const modelLegend = createMemo(() => {
+    const totals = new Map<string, number>()
+    for (const point of timeseriesByModelData()) {
+      const total = TOKEN_CATEGORY_KEYS.reduce((sum, key) => sum + num(point.tokens[key]), 0)
+      totals.set(point.model, (totals.get(point.model) ?? 0) + total)
+    }
+    const ordered = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    const colors = modelColorMap(ordered.map(([label]) => label))
+    return ordered.map(([label, value]) => ({ label, value, color: colors.get(label)! }))
+  })
+
+  const modelColors = createMemo(() => new Map(modelLegend().map((item) => [item.label, item.color])))
+
+  const loading = createMemo(
+    () =>
+      !overviewQuery.data && (overviewQuery.isLoading || timeseriesQuery.isLoading || timeseriesByModelQuery.isLoading),
+  )
 
   return (
     <div class="flex flex-col gap-4 rounded-[10px] bg-v2-background-bg-layer-01 p-4 [box-shadow:inset_0_0_0_0.5px_var(--v2-border-border-muted)]">
@@ -396,42 +510,90 @@ export function UsagePanel(props: {
                 <span class="text-xs text-v2-text-text-muted [font-weight:530]">
                   {state.mode === "cost" ? "Daily Cost" : "Daily Token Usage"}
                 </span>
-                <div class="flex rounded-[6px] bg-v2-background-bg-layer-02 p-0.5">
-                  <button
-                    type="button"
-                    class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
-                    classList={{
-                      "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.mode === "cost",
-                      "text-v2-text-text-muted hover:text-v2-text-text-base": state.mode !== "cost",
-                    }}
-                    onClick={() => setState("mode", "cost")}
-                  >
-                    Cost
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
-                    classList={{
-                      "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.mode === "tokens",
-                      "text-v2-text-text-muted hover:text-v2-text-text-base": state.mode !== "tokens",
-                    }}
-                    onClick={() => setState("mode", "tokens")}
-                  >
-                    Tokens
-                  </button>
+                <div class="flex items-center gap-2">
+                  <Show when={state.mode === "tokens"}>
+                    <div class="flex rounded-[6px] bg-v2-background-bg-layer-02 p-0.5">
+                      <button
+                        type="button"
+                        class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
+                        classList={{
+                          "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.tokenGroup === "model",
+                          "text-v2-text-text-muted hover:text-v2-text-text-base": state.tokenGroup !== "model",
+                        }}
+                        onClick={() => setState("tokenGroup", "model")}
+                      >
+                        By Model
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
+                        classList={{
+                          "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.tokenGroup === "category",
+                          "text-v2-text-text-muted hover:text-v2-text-text-base": state.tokenGroup !== "category",
+                        }}
+                        onClick={() => setState("tokenGroup", "category")}
+                      >
+                        By Type
+                      </button>
+                    </div>
+                  </Show>
+                  <div class="flex rounded-[6px] bg-v2-background-bg-layer-02 p-0.5">
+                    <button
+                      type="button"
+                      class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
+                      classList={{
+                        "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.mode === "cost",
+                        "text-v2-text-text-muted hover:text-v2-text-text-base": state.mode !== "cost",
+                      }}
+                      onClick={() => setState("mode", "cost")}
+                    >
+                      Cost
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-[4px] px-2 py-0.5 text-xs transition-colors"
+                      classList={{
+                        "bg-v2-background-bg-layer-04 text-v2-text-text-base": state.mode === "tokens",
+                        "text-v2-text-text-muted hover:text-v2-text-text-base": state.mode !== "tokens",
+                      }}
+                      onClick={() => setState("mode", "tokens")}
+                    >
+                      Tokens
+                    </button>
+                  </div>
                 </div>
               </div>
-              <UsageAreaChart data={timeseriesData()} mode={state.mode} />
+              <UsageAreaChart
+                data={timeseriesData()}
+                byModelData={timeseriesByModelData()}
+                modelColors={modelColors()}
+                mode={state.mode}
+                groupBy={state.mode === "tokens" ? state.tokenGroup : "category"}
+              />
               <Show when={state.mode === "tokens"}>
                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                  <For each={TOKEN_CATEGORY_KEYS}>
-                    {(key) => (
-                      <div class="flex items-center gap-1.5 text-xs text-v2-text-text-muted">
-                        <span class="size-2 rounded-full" style={{ background: TOKEN_CATEGORY_COLORS[key] }} />
-                        {TOKEN_CATEGORY_LABELS[key]}
-                      </div>
-                    )}
-                  </For>
+                  <Show
+                    when={state.tokenGroup === "model"}
+                    fallback={
+                      <For each={TOKEN_CATEGORY_KEYS}>
+                        {(key) => (
+                          <div class="flex items-center gap-1.5 text-xs text-v2-text-text-muted">
+                            <span class="size-2 rounded-full" style={{ background: TOKEN_CATEGORY_COLORS[key] }} />
+                            {TOKEN_CATEGORY_LABELS[key]}
+                          </div>
+                        )}
+                      </For>
+                    }
+                  >
+                    <For each={modelLegend()}>
+                      {(item) => (
+                        <div class="flex items-center gap-1.5 text-xs text-v2-text-text-muted">
+                          <span class="size-2 rounded-full" style={{ background: item.color }} />
+                          {item.label}
+                        </div>
+                      )}
+                    </For>
+                  </Show>
                 </div>
               </Show>
             </div>
@@ -487,7 +649,12 @@ function StatCard(props: { label: string; value: string }) {
   )
 }
 
-function DonutCard(props: { title: string; data: DonutDatum[]; formatValue: (v: number) => string; actions?: JSX.Element }) {
+function DonutCard(props: {
+  title: string
+  data: DonutDatum[]
+  formatValue: (v: number) => string
+  actions?: JSX.Element
+}) {
   return (
     <div class="flex flex-col gap-3 rounded-[8px] bg-v2-background-bg-base p-3 [box-shadow:inset_0_0_0_0.5px_var(--v2-border-border-muted)]">
       <div class="flex min-w-0 items-center justify-between gap-2">

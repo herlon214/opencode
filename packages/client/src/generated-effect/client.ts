@@ -711,12 +711,22 @@ const Endpoint18_2 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_2In
     Effect.mapError(mapClientError),
   )
 
-type Endpoint18_3Request = Parameters<RawClient["server.stats"]["stats.byAgent"]>[0]
+type Endpoint18_3Request = Parameters<RawClient["server.stats"]["stats.timeseriesByModel"]>[0]
 type Endpoint18_3Input = {
   readonly location?: Endpoint18_3Request["query"]["location"]
   readonly days?: Endpoint18_3Request["query"]["days"]
 }
 const Endpoint18_3 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_3Input) =>
+  raw["stats.timeseriesByModel"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
+    Effect.mapError(mapClientError),
+  )
+
+type Endpoint18_4Request = Parameters<RawClient["server.stats"]["stats.byAgent"]>[0]
+type Endpoint18_4Input = {
+  readonly location?: Endpoint18_4Request["query"]["location"]
+  readonly days?: Endpoint18_4Request["query"]["days"]
+}
+const Endpoint18_4 = (raw: RawClient["server.stats"]) => (input?: Endpoint18_4Input) =>
   raw["stats.byAgent"]({ query: { location: input?.["location"], days: input?.["days"] } }).pipe(
     Effect.mapError(mapClientError),
   )
@@ -725,7 +735,8 @@ const adaptGroup18 = (raw: RawClient["server.stats"]) => ({
   overview: Endpoint18_0(raw),
   timeseries: Endpoint18_1(raw),
   byModel: Endpoint18_2(raw),
-  byAgent: Endpoint18_3(raw),
+  timeseriesByModel: Endpoint18_3(raw),
+  byAgent: Endpoint18_4(raw),
 })
 
 const adaptClient = (raw: RawClient) => ({

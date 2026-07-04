@@ -54,6 +54,22 @@ export const StatsByModelResult = Schema.Struct({
   }),
 })
 
+export const StatsTimeseriesByModelPoint = Schema.Struct({
+  date: Schema.String,
+  model: Schema.String,
+  providerID: Schema.String,
+  modelID: Schema.String,
+  cost: Schema.Number,
+  sessions: Schema.Number,
+  tokens: Schema.Struct({
+    input: Schema.Number,
+    output: Schema.Number,
+    reasoning: Schema.Number,
+    cache_read: Schema.Number,
+    cache_write: Schema.Number,
+  }),
+})
+
 export const StatsByAgentResult = Schema.Struct({
   agent: Schema.String,
   sessions: Schema.Number,
@@ -102,6 +118,18 @@ export const StatsGroup = HttpApiGroup.make("server.stats").add(
         identifier: "v2.stats.byModel",
         summary: "Get usage by model",
         description: "Breakdown of tokens and cost by model.",
+      }),
+    ),
+  HttpApiEndpoint.get("stats.timeseriesByModel", "/api/stats/timeseries-by-model", {
+    query: StatsQuery,
+    success: Location.response(Schema.Array(StatsTimeseriesByModelPoint)),
+  })
+    .annotateMerge(locationQueryOpenApi)
+    .annotateMerge(
+      OpenApi.annotations({
+        identifier: "v2.stats.timeseriesByModel",
+        summary: "Get daily usage by model",
+        description: "Daily breakdown of tokens and cost grouped by model, filterable by number of days.",
       }),
     ),
   HttpApiEndpoint.get("stats.byAgent", "/api/stats/by-agent", {
