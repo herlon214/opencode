@@ -1018,6 +1018,7 @@ export function Prompt(props: PromptProps) {
       }
 
       sessionID = res.data.id
+      local.model.promote(sessionID)
     }
 
     const inputText = expandTrackedPastedText(
