@@ -1054,7 +1054,7 @@ export default function Page() {
     inputRef?.focus()
   }
 
-  useComposerCommands()
+  useComposerCommands({ focusInput })
   useSettingsCommand()
   useSessionCommands({
     navigateMessageByOffset,

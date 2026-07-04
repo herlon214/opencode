@@ -13,7 +13,7 @@ const withCategory = (category: string) => {
   })
 }
 
-export const useComposerCommands = () => {
+export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) => {
   const command = useCommand()
   const dialog = useDialog()
   const language = useLanguage()
@@ -28,7 +28,7 @@ export const useComposerCommands = () => {
     const owner = sessionOwnership.capture()
     const { DialogSelectModel } = await import("@/components/dialog-select-model")
     owner.run(() => {
-      void dialog.show(() => <DialogSelectModel model={local.model} />)
+      void dialog.show(() => <DialogSelectModel model={local.model} />, focusInput)
     })
   }
 

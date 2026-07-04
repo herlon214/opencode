@@ -40,10 +40,10 @@ export default function NewSessionPage() {
   const route = useSessionKey()
   const [searchParams, setSearchParams] = useSearchParams<{ draftId?: string; prompt?: string }>()
 
-  useComposerCommands()
-  useSettingsCommand()
-
   let inputRef: HTMLDivElement | undefined
+
+  useComposerCommands({ focusInput: () => inputRef?.focus() })
+  useSettingsCommand()
 
   const inputController = createPromptInputController({
     sessionKey: route.sessionKey,
