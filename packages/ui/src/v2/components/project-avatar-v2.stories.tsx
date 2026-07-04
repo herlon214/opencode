@@ -11,6 +11,7 @@ Saturated 16px project avatar with color variants and optional unread dot.
 
 ### Variants
 - Color: orange, yellow, cyan, green, red, pink, blue, purple, gray.
+- Outline: neutral, muted style for de-emphasized projects (e.g. recently closed).
 - Image vs initial content state.
 - Unread dot with corner mask when \`unread\` is set.
 - Warning dot (yellow, pulsing) when \`warning\` is set, e.g. a session blocked on a permission request.
@@ -34,7 +35,7 @@ export default {
   argTypes: {
     variant: {
       control: "select",
-      options: [...PROJECT_AVATAR_VARIANTS],
+      options: [...PROJECT_AVATAR_VARIANTS, "outline"],
     },
   },
   args: {
@@ -61,6 +62,13 @@ export const AllVariants = {
       </For>
     </div>
   ),
+}
+
+export const Outline = {
+  args: {
+    fallback: "O",
+    variant: "outline",
+  },
 }
 
 export const Unread = {
