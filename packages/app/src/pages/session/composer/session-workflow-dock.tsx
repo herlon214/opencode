@@ -14,8 +14,11 @@ export function SessionWorkflowDock(props: {
   const language = useLanguage()
   const total = createMemo(() => props.steps.length)
 
-  const stepLabel = (step: WorkflowStep) =>
-    step.type === "prompt" ? step.text.slice(0, 60) : `/${step.command}`
+  const stepLabel = (step: WorkflowStep) => {
+    if (step.type === "prompt") return step.text.slice(0, 60)
+    if (step.type === "command") return `/${step.command}`
+    return step.description ?? language.t("session.workflowDock.inputWaiting")
+  }
 
   return (
     <DockTray

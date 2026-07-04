@@ -11,6 +11,11 @@ export const Step = Schema.Union([
     type: Schema.Literal("command"),
     command: Schema.String,
   }),
+  Schema.Struct({
+    type: Schema.Literal("input"),
+    placeholder: Schema.String.pipe(Schema.optional),
+    description: Schema.String.pipe(Schema.optional),
+  }),
 ])
 export type Step = Schema.Schema.Type<typeof Step>
 

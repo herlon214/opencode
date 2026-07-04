@@ -1,7 +1,10 @@
 import { createStore } from "solid-js/store"
 import { useSync } from "@/context/sync"
 
-export type WorkflowStep = { type: "prompt"; text: string } | { type: "command"; command: string }
+export type WorkflowStep =
+  | { type: "prompt"; text: string }
+  | { type: "command"; command: string }
+  | { type: "input"; placeholder?: string; description?: string }
 
 export type WorkflowRun = {
   name: string
@@ -39,7 +42,7 @@ export function createWorkflowRunner() {
   const queueStep = (step: WorkflowStep | undefined, input: Input) => {
     if (!step) return
     if (step.type === "prompt") input.queuePrompt(step.text)
-    else input.queueCommand(step.command)
+    else if (step.type === "command") input.queueCommand(step.command)
   }
 
   const advance = (sessionID: string, input: Input) => {

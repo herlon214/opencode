@@ -696,6 +696,7 @@ export const dict = {
   "session.workflowDock.title": "Workflow: {{name}}",
   "session.workflowDock.progress": "Step {{current}} of {{total}}",
   "session.workflowDock.cancel": "Cancel workflow",
+  "session.workflowDock.inputWaiting": "Waiting for input…",
   "session.revertDock.summary.one": "{{count}} rolled back message",
   "session.revertDock.summary.other": "{{count}} rolled back messages",
   "session.revertDock.collapse": "Collapse rolled back messages",

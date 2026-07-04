@@ -1226,6 +1226,7 @@ export type Config = {
       steps: Array<
         | { type: "prompt"; text: string }
         | { type: "command"; command: string }
+        | { type: "input"; placeholder?: string; description?: string }
       >
     }
   }

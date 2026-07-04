@@ -27,7 +27,11 @@ export type SessionComposerRevertDock = {
 export type SessionComposerWorkflowDock = {
   name: string
   description?: string
-  steps: Array<{ type: "prompt"; text: string } | { type: "command"; command: string }>
+  steps: Array<
+    | { type: "prompt"; text: string }
+    | { type: "command"; command: string }
+    | { type: "input"; placeholder?: string; description?: string }
+  >
   current: number
   onCancel: () => void
 }
