@@ -378,8 +378,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         reset() {
           setStore({ draft: undefined, promoting: undefined })
         },
-        promote(dir: string, session: string) {
-          const next = clone(snapshot())
+        promote(dir: string, session: string, state?: State) {
+          const next = clone(state ?? snapshot())
           if (!next) return
           const key = handoffKey(serverSDK().scope, dir, session)
           handoff.set(key, next)

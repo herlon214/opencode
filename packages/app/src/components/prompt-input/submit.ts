@@ -315,6 +315,12 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return
     }
 
+    const model = {
+      modelID: currentModel.id,
+      providerID: currentModel.provider.id,
+    }
+    const agent = currentAgent.name
+
     input.addToHistory(currentPrompt, mode)
     input.resetHistoryNavigation()
 
@@ -381,7 +387,11 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         seed(sessionDirectory, created)
         session = created
         if (shouldAutoAccept) permission.enableAutoAccept(session.id, sessionDirectory)
-        local.session.promote(sessionDirectory, session.id)
+        local.session.promote(sessionDirectory, session.id, {
+          agent,
+          model: { providerID: model.providerID, modelID: model.modelID },
+          variant: variant ?? null,
+        })
         layout.handoff.setTabs(base64Encode(sessionDirectory), session.id)
         const draftID = search.draftId
         if (draftID) tabs.promoteDraft(draftID, { server: tabs.draft(draftID).server, sessionId: session.id })
@@ -397,11 +407,6 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return
     }
 
-    const model = {
-      modelID: currentModel.id,
-      providerID: currentModel.provider.id,
-    }
-    const agent = currentAgent.name
     const draft: FollowupDraft = {
       sessionID: session.id,
       sessionDirectory,
