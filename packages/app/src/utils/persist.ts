@@ -32,6 +32,65 @@ const fallback = new Map<string, boolean>()
 const CACHE_MAX_ENTRIES = 500
 const CACHE_MAX_BYTES = 8 * 1024 * 1024
 
+// makePersisted serializes and writes on every store mutation, which for stores written per
+// keystroke (prompt drafts) means a full JSON.stringify plus an IPC round-trip on desktop for
+// each character typed. Writes are coalesced here instead: the raw store reference is held
+// (serialization deferred to flush time via the identity serialize below) and written once the
+// burst settles. Reads always come from the in-memory store, so a delayed write is only
+// observable by a concurrent getItem on the same key, which flushes first.
+const WRITE_DEBOUNCE_MS = 200
+
+type PendingWrite = {
+  value: unknown
+  write: (value: string) => void
+  timer: ReturnType<typeof setTimeout>
+}
+
+const pendingWrites = new Map<string, PendingWrite>()
+
+function serializePendingValue(value: unknown) {
+  return typeof value === "string" ? value : JSON.stringify(value)
+}
+
+function flushPendingWrite(id: string) {
+  const pending = pendingWrites.get(id)
+  if (!pending) return
+  clearTimeout(pending.timer)
+  pendingWrites.delete(id)
+  pending.write(serializePendingValue(pending.value))
+}
+
+// Exported so the desktop main process can request a flush over IPC on exit
+// paths that skip pagehide/beforeunload (app.exit after relaunch or signals).
+export function flushAllPendingWrites() {
+  for (const id of [...pendingWrites.keys()]) flushPendingWrite(id)
+}
+
+function cancelPendingWrite(id: string) {
+  const pending = pendingWrites.get(id)
+  if (!pending) return
+  clearTimeout(pending.timer)
+  pendingWrites.delete(id)
+}
+
+function schedulePendingWrite(id: string, value: unknown, write: (value: string) => void) {
+  const existing = pendingWrites.get(id)
+  if (existing) clearTimeout(existing.timer)
+  pendingWrites.set(id, { value, write, timer: setTimeout(() => flushPendingWrite(id), WRITE_DEBOUNCE_MS) })
+}
+
+function pendingWriteID(storage: string | undefined, key: string) {
+  return `${storage ?? ""}\u0000${key}`
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushAllPendingWrites)
+  window.addEventListener("beforeunload", flushAllPendingWrites)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAllPendingWrites()
+  })
+}
+
 type CacheEntry = { value: string; bytes: number }
 const cache = new Map<string, CacheEntry>()
 const cacheTotal = { bytes: 0 }
@@ -470,11 +529,16 @@ export function draftPersistedKeys() {
 }
 
 export const PersistTesting = {
+  cancelPendingWrite,
+  flushAllPendingWrites,
+  flushPendingWrite,
   localStorageDirect,
   localStorageWithPrefix,
   migrateLegacy,
   normalize,
+  pendingWriteID,
   resolveTarget,
+  schedulePendingWrite,
   windowStorage,
   workspaceStorage,
 }
@@ -525,28 +589,30 @@ function resolveTarget(target: PersistTarget, platform: Platform): PersistTarget
   }
 }
 
-export function removePersisted(
-  target: { storage?: string; legacyStorageNames?: string[]; key: string },
-  platform?: Platform,
-) {
+export function removePersisted(target: PersistTarget, platform?: Platform) {
+  // Resolve scope the same way persisted() does, so the pending-write cancel
+  // key and the removal hit the storage the writes actually target.
+  const resolved = platform ? resolveTarget(target, platform) : target
   const isDesktop = platform?.platform === "desktop" && !!platform.storage
 
+  cancelPendingWrite(pendingWriteID(resolved.storage, resolved.key))
+
   if (isDesktop) {
-    void platform.storage?.(target.storage)?.removeItem(target.key)
-    for (const storage of target.legacyStorageNames ?? []) {
-      void platform.storage?.(storage)?.removeItem(target.key)
+    void platform.storage?.(resolved.storage)?.removeItem(resolved.key)
+    for (const storage of resolved.legacyStorageNames ?? []) {
+      void platform.storage?.(storage)?.removeItem(resolved.key)
     }
     return
   }
 
-  if (!target.storage) {
-    localStorageDirect().removeItem(target.key)
+  if (!resolved.storage) {
+    localStorageDirect().removeItem(resolved.key)
     return
   }
 
-  localStorageWithPrefix(target.storage).removeItem(target.key)
-  for (const storage of target.legacyStorageNames ?? []) {
-    localStorageWithPrefix(storage).removeItem(target.key)
+  localStorageWithPrefix(resolved.storage).removeItem(resolved.key)
+  for (const storage of resolved.legacyStorageNames ?? []) {
+    localStorageWithPrefix(storage).removeItem(resolved.key)
   }
 }
 
@@ -575,6 +641,7 @@ export function persisted<T>(
   })()
 
   const legacyStorageNames = config.legacyStorageNames ?? []
+  const writeID = pendingWriteID(config.storage, config.key)
 
   const storage = (() => {
     if (!isDesktop) {
@@ -584,6 +651,7 @@ export function persisted<T>(
 
       const api: SyncStorage = {
         getItem: (key) => {
+          flushPendingWrite(writeID)
           const value = readCurrent({ storage: current, key, defaults, migrate: config.migrate })
           if (value !== undefined) return value
           return migrateLegacy({
@@ -597,9 +665,10 @@ export function persisted<T>(
           })
         },
         setItem: (key, value) => {
-          current.setItem(key, value)
+          schedulePendingWrite(writeID, value, (serialized) => current.setItem(key, serialized))
         },
         removeItem: (key) => {
+          cancelPendingWrite(writeID)
           current.removeItem(key)
         },
       }
@@ -615,6 +684,7 @@ export function persisted<T>(
 
     const api: AsyncStorage = {
       getItem: async (key) => {
+        flushPendingWrite(writeID)
         const value = await readCurrentAsync({ storage: current, key, defaults, migrate: config.migrate })
         if (value !== undefined) return value
         return migrateLegacyAsync({
@@ -628,9 +698,10 @@ export function persisted<T>(
         })
       },
       setItem: async (key, value) => {
-        await current.setItem(key, value)
+        schedulePendingWrite(writeID, value, (serialized) => void current.setItem(key, serialized))
       },
       removeItem: async (key) => {
+        cancelPendingWrite(writeID)
         await current.removeItem(key)
       },
     }
@@ -638,7 +709,14 @@ export function persisted<T>(
     return api
   })()
 
-  const [state, setState, init] = makePersisted(store, { name: config.key, storage })
+  const [state, setState, init] = makePersisted(store, {
+    name: config.key,
+    storage,
+    // Identity serialize: the raw store reference flows into the debounced setItem above, and
+    // serializePendingValue stringifies the then-current state at flush time. This keeps both the
+    // JSON.stringify and the storage write off the per-mutation path.
+    serialize: (value) => value as unknown as string,
+  })
 
   const isAsync = init instanceof Promise
   const [ready] = createResource(

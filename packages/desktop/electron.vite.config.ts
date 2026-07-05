@@ -95,7 +95,9 @@ const require = __cjs_mod__.createRequire(import.meta.url);
     publicDir: "../../../app/public",
     root: "src/renderer",
     build: {
-      sourcemap: true,
+      // Sourcemaps are only useful when the Sentry plugin uploads (and then deletes) them;
+      // without Sentry credentials they would ship inside the packaged app.
+      sourcemap: Boolean(sentry),
       rollupOptions: {
         input: {
           main: "src/renderer/index.html",

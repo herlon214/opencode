@@ -209,3 +209,69 @@ describe("persist localStorage resilience", () => {
     expect(Persist.serverGlobal("a:b" as ServerScope, "c")).not.toEqual(Persist.serverGlobal("a" as ServerScope, "b:c"))
   })
 })
+
+describe("persist write debouncing", () => {
+  test("coalesces scheduled writes and serializes the latest value at flush time", () => {
+    const id = persistTesting.pendingWriteID("store.dat", "key")
+    const writes: string[] = []
+    const value = { text: "a" }
+
+    persistTesting.schedulePendingWrite(id, value, (serialized) => writes.push(serialized))
+    value.text = "ab"
+    persistTesting.schedulePendingWrite(id, value, (serialized) => writes.push(serialized))
+    value.text = "abc"
+
+    expect(writes).toEqual([])
+    persistTesting.flushPendingWrite(id)
+    expect(writes).toEqual(['{"text":"abc"}'])
+
+    persistTesting.flushPendingWrite(id)
+    expect(writes).toEqual(['{"text":"abc"}'])
+  })
+
+  test("passes through already-serialized string values", () => {
+    const id = persistTesting.pendingWriteID(undefined, "key")
+    const writes: string[] = []
+
+    persistTesting.schedulePendingWrite(id, '{"value":1}', (serialized) => writes.push(serialized))
+    persistTesting.flushPendingWrite(id)
+
+    expect(writes).toEqual(['{"value":1}'])
+  })
+
+  test("cancel drops the pending write", () => {
+    const id = persistTesting.pendingWriteID("store.dat", "key")
+    const writes: string[] = []
+
+    persistTesting.schedulePendingWrite(id, { value: 1 }, (serialized) => writes.push(serialized))
+    persistTesting.cancelPendingWrite(id)
+    persistTesting.flushPendingWrite(id)
+
+    expect(writes).toEqual([])
+  })
+
+  test("flushAllPendingWrites flushes independent keys", () => {
+    const writes: string[] = []
+
+    persistTesting.schedulePendingWrite(persistTesting.pendingWriteID("a.dat", "key"), { a: 1 }, (serialized) =>
+      writes.push(serialized),
+    )
+    persistTesting.schedulePendingWrite(persistTesting.pendingWriteID("b.dat", "key"), { b: 2 }, (serialized) =>
+      writes.push(serialized),
+    )
+    persistTesting.flushAllPendingWrites()
+
+    expect(writes.sort()).toEqual(['{"a":1}', '{"b":2}'])
+  })
+
+  test("writes automatically after the debounce interval", async () => {
+    const id = persistTesting.pendingWriteID("store.dat", "timer")
+    const writes: string[] = []
+
+    persistTesting.schedulePendingWrite(id, { value: 1 }, (serialized) => writes.push(serialized))
+    expect(writes).toEqual([])
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(writes).toEqual(['{"value":1}'])
+  })
+})

@@ -4,6 +4,7 @@ import {
   ACCEPTED_FILE_EXTENSIONS,
   AppBaseProviders,
   AppInterface,
+  flushAllPendingWrites,
   handleNotificationClick,
   loadLocaleDict,
   normalizeLocale,
@@ -284,8 +285,6 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
       await window.api.setDisplayBackend(backend)
     },
 
-    parseMarkdown: (markdown: string) => window.api.parseMarkdownCommand(markdown),
-
     webviewZoom,
 
     getPinchZoomEnabled: () => window.api.getPinchZoomEnabled(),
@@ -313,6 +312,9 @@ let menuTrigger = null as null | ((id: string) => void)
 window.api.onMenuCommand((id) => {
   menuTrigger?.(id)
 })
+// Main asks for this on exit paths that skip pagehide/beforeunload
+// (relaunch, signals) so debounced persisted writes aren't lost.
+window.api.onFlushPendingWrites(flushAllPendingWrites)
 listenForDeepLinks()
 
 function LoadingSplash() {

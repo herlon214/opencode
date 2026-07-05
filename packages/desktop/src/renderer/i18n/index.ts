@@ -1,38 +1,7 @@
 import * as i18n from "@solid-primitives/i18n"
 
 import { dict as desktopEn } from "./en"
-import { dict as desktopZh } from "./zh"
-import { dict as desktopZht } from "./zht"
-import { dict as desktopKo } from "./ko"
-import { dict as desktopDe } from "./de"
-import { dict as desktopEs } from "./es"
-import { dict as desktopFr } from "./fr"
-import { dict as desktopDa } from "./da"
-import { dict as desktopJa } from "./ja"
-import { dict as desktopPl } from "./pl"
-import { dict as desktopRu } from "./ru"
-import { dict as desktopUk } from "./uk"
-import { dict as desktopAr } from "./ar"
-import { dict as desktopNo } from "./no"
-import { dict as desktopBr } from "./br"
-import { dict as desktopBs } from "./bs"
-
 import { dict as appEn } from "../../../../app/src/i18n/en"
-import { dict as appZh } from "../../../../app/src/i18n/zh"
-import { dict as appZht } from "../../../../app/src/i18n/zht"
-import { dict as appKo } from "../../../../app/src/i18n/ko"
-import { dict as appDe } from "../../../../app/src/i18n/de"
-import { dict as appEs } from "../../../../app/src/i18n/es"
-import { dict as appFr } from "../../../../app/src/i18n/fr"
-import { dict as appDa } from "../../../../app/src/i18n/da"
-import { dict as appJa } from "../../../../app/src/i18n/ja"
-import { dict as appPl } from "../../../../app/src/i18n/pl"
-import { dict as appRu } from "../../../../app/src/i18n/ru"
-import { dict as appUk } from "../../../../app/src/i18n/uk"
-import { dict as appAr } from "../../../../app/src/i18n/ar"
-import { dict as appNo } from "../../../../app/src/i18n/no"
-import { dict as appBr } from "../../../../app/src/i18n/br"
-import { dict as appBs } from "../../../../app/src/i18n/bs"
 
 export type Locale =
   | "en"
@@ -142,23 +111,34 @@ function pickLocale(value: unknown): Locale | null {
 
 const base = i18n.flatten({ ...appEn, ...desktopEn })
 
-function build(locale: Locale): Dictionary {
-  if (locale === "en") return base
-  if (locale === "zh") return { ...base, ...i18n.flatten(appZh), ...i18n.flatten(desktopZh) }
-  if (locale === "zht") return { ...base, ...i18n.flatten(appZht), ...i18n.flatten(desktopZht) }
-  if (locale === "de") return { ...base, ...i18n.flatten(appDe), ...i18n.flatten(desktopDe) }
-  if (locale === "es") return { ...base, ...i18n.flatten(appEs), ...i18n.flatten(desktopEs) }
-  if (locale === "fr") return { ...base, ...i18n.flatten(appFr), ...i18n.flatten(desktopFr) }
-  if (locale === "da") return { ...base, ...i18n.flatten(appDa), ...i18n.flatten(desktopDa) }
-  if (locale === "ja") return { ...base, ...i18n.flatten(appJa), ...i18n.flatten(desktopJa) }
-  if (locale === "pl") return { ...base, ...i18n.flatten(appPl), ...i18n.flatten(desktopPl) }
-  if (locale === "ru") return { ...base, ...i18n.flatten(appRu), ...i18n.flatten(desktopRu) }
-  if (locale === "uk") return { ...base, ...i18n.flatten(appUk), ...i18n.flatten(desktopUk) }
-  if (locale === "ar") return { ...base, ...i18n.flatten(appAr), ...i18n.flatten(desktopAr) }
-  if (locale === "no") return { ...base, ...i18n.flatten(appNo), ...i18n.flatten(desktopNo) }
-  if (locale === "br") return { ...base, ...i18n.flatten(appBr), ...i18n.flatten(desktopBr) }
-  if (locale === "bs") return { ...base, ...i18n.flatten(appBs), ...i18n.flatten(desktopBs) }
-  return { ...base, ...i18n.flatten(appKo), ...i18n.flatten(desktopKo) }
+type LocaleModule = { dict: i18n.BaseRecordDict }
+
+const merge = async (app: Promise<LocaleModule>, desktop: Promise<LocaleModule>): Promise<Dictionary> => {
+  const [appDict, desktopDict] = await Promise.all([app, desktop])
+  return { ...base, ...i18n.flatten(appDict.dict), ...i18n.flatten(desktopDict.dict) }
+}
+
+const loaders: Record<Exclude<Locale, "en">, () => Promise<Dictionary>> = {
+  zh: () => merge(import("../../../../app/src/i18n/zh"), import("./zh")),
+  zht: () => merge(import("../../../../app/src/i18n/zht"), import("./zht")),
+  ko: () => merge(import("../../../../app/src/i18n/ko"), import("./ko")),
+  de: () => merge(import("../../../../app/src/i18n/de"), import("./de")),
+  es: () => merge(import("../../../../app/src/i18n/es"), import("./es")),
+  fr: () => merge(import("../../../../app/src/i18n/fr"), import("./fr")),
+  da: () => merge(import("../../../../app/src/i18n/da"), import("./da")),
+  ja: () => merge(import("../../../../app/src/i18n/ja"), import("./ja")),
+  pl: () => merge(import("../../../../app/src/i18n/pl"), import("./pl")),
+  ru: () => merge(import("../../../../app/src/i18n/ru"), import("./ru")),
+  uk: () => merge(import("../../../../app/src/i18n/uk"), import("./uk")),
+  ar: () => merge(import("../../../../app/src/i18n/ar"), import("./ar")),
+  no: () => merge(import("../../../../app/src/i18n/no"), import("./no")),
+  br: () => merge(import("../../../../app/src/i18n/br"), import("./br")),
+  bs: () => merge(import("../../../../app/src/i18n/bs"), import("./bs")),
+}
+
+function build(locale: Locale): Promise<Dictionary> {
+  if (locale === "en") return Promise.resolve(base)
+  return loaders[locale]()
 }
 
 const state = {
@@ -166,8 +146,6 @@ const state = {
   dict: base as Dictionary,
   init: undefined as Promise<Locale> | undefined,
 }
-
-state.dict = build(state.locale)
 
 const translate = i18n.translator(() => state.dict, i18n.resolveTemplate)
 
@@ -185,7 +163,7 @@ export function initI18n(): Promise<Locale> {
     const next = pickLocale(value) ?? state.locale
 
     state.locale = next
-    state.dict = build(next)
+    state.dict = await build(next)
     return next
   })().catch(() => state.locale)
 

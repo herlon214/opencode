@@ -61,7 +61,6 @@ const api: ElectronAPI = {
   setDefaultServerUrl: (url) => ipcRenderer.invoke("set-default-server-url", url),
   getDisplayBackend: () => ipcRenderer.invoke("get-display-backend"),
   setDisplayBackend: (backend) => ipcRenderer.invoke("set-display-backend", backend),
-  parseMarkdownCommand: (markdown) => ipcRenderer.invoke("parse-markdown", markdown),
   checkAppExists: (appName) => ipcRenderer.invoke("check-app-exists", appName),
   resolveAppPath: (appName) => ipcRenderer.invoke("resolve-app-path", appName),
   storeGet: (name, key) => ipcRenderer.invoke("store-get", name, key),
@@ -70,6 +69,16 @@ const api: ElectronAPI = {
   storeClear: (name) => ipcRenderer.invoke("store-clear", name),
   storeKeys: (name) => ipcRenderer.invoke("store-keys", name),
   storeLength: (name) => ipcRenderer.invoke("store-length", name),
+  onFlushPendingWrites: (cb) => {
+    const handler = () => {
+      cb()
+      // The writes cb() issued are queued ahead of this ack on the same
+      // ordered IPC channel, so the main process sees them first.
+      ipcRenderer.send("persist-flushed")
+    }
+    ipcRenderer.on("persist-flush", handler)
+    return () => ipcRenderer.removeListener("persist-flush", handler)
+  },
 
   getWindowCount: () => ipcRenderer.invoke("get-window-count"),
   getWindowID: () => ipcRenderer.invoke("get-window-id"),

@@ -17,7 +17,6 @@ import { CHANNEL } from "./constants"
 import { registerIpcHandlers, sendDeepLinks, sendMenuCommand } from "./ipc"
 import { forwardInitializationFailure } from "./initialization"
 import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as writeLog } from "./logging"
-import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
 import {
   getDefaultServerUrl,
@@ -40,6 +39,7 @@ import { createWslServersController } from "./wsl/servers"
 import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
 import { migrate } from "./migrate"
+import { flushAllStores, flushRendererStores } from "./store"
 import { cleanupStoreFiles } from "./store-cleanup"
 
 const APP_NAMES: Record<string, string> = {
@@ -160,9 +160,15 @@ const main = Effect.gen(function* () {
   }
   const relaunch = () => {
     setAppQuitting()
-    void stopSidecars().finally(() => {
-      app.relaunch()
-      app.exit(0)
+    // app.exit() skips will-quit and renderer unload handlers, so pull the
+    // renderers' debounced writes over IPC before flushing the main-side
+    // stores explicitly.
+    void flushRendererStores().finally(() => {
+      flushAllStores()
+      void stopSidecars().finally(() => {
+        app.relaunch()
+        app.exit(0)
+      })
     })
   }
 
@@ -190,7 +196,10 @@ const main = Effect.gen(function* () {
     return
   }
 
-  preferAppEnv(app.getPath("userData"))
+  // Probe the user's login shell for env vars in the background; the result is
+  // only needed once the sidecar spawns, so it runs concurrently with the rest
+  // of startup instead of blocking the main thread on an interactive shell.
+  const appEnvReady = preferAppEnv(app.getPath("userData"))
 
   app.on("second-instance", (_event: Event, argv: string[]) => {
     const urls = argv.filter((arg: string) => arg.startsWith("opencode://"))
@@ -236,7 +245,13 @@ const main = Effect.gen(function* () {
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => {
       setAppQuitting()
-      void stopSidecars().finally(() => app.exit(0))
+      // app.exit() skips will-quit and renderer unload handlers, so pull the
+      // renderers' debounced writes over IPC before flushing the main-side
+      // stores explicitly.
+      void flushRendererStores().finally(() => {
+        flushAllStores()
+        void stopSidecars().finally(() => app.exit(0))
+      })
     })
   }
 
@@ -245,19 +260,16 @@ const main = Effect.gen(function* () {
   yield* Effect.promise(() => app.whenReady())
 
   if (!TEST_ONBOARDING) migrate()
-  yield* Effect.promise(() => cleanupStoreFiles(app.getPath("userData"))).pipe(
-    Effect.tap((result) =>
-      Effect.sync(() => {
-        if (result.deleted.length === 0) return
-        logger.log("cleaned scoped store files", { count: result.deleted.length, scanned: result.scanned })
-      }),
-    ),
-    Effect.catch((error) =>
-      Effect.sync(() => {
-        logger.warn("failed to clean scoped store files", error)
-      }),
-    ),
-  )
+  // Pure housekeeping (stale/empty draft and workspace stores) — runs in the
+  // background so it doesn't block window creation.
+  void cleanupStoreFiles(app.getPath("userData"))
+    .then((result) => {
+      if (result.deleted.length === 0) return
+      logger.log("cleaned scoped store files", { count: result.deleted.length, scanned: result.scanned })
+    })
+    .catch((error) => {
+      logger.warn("failed to clean scoped store files", error)
+    })
   app.setAsDefaultProtocolClient("opencode")
   registerRendererProtocol()
   setDockIcon()
@@ -279,7 +291,6 @@ const main = Effect.gen(function* () {
     setDefaultServerUrl: (url) => setDefaultServerUrl(url),
     getDisplayBackend: async () => null,
     setDisplayBackend: async () => undefined,
-    parseMarkdown: async (markdown) => parseMarkdown(markdown),
     checkAppExists: (appName) => checkAppExists(appName),
     resolveAppPath: async (appName) => resolveAppPath(appName),
     updater,
@@ -331,6 +342,7 @@ const main = Effect.gen(function* () {
   const loadingTask = yield* Effect.gen(function* () {
     logger.log("sidecar connection started", { url })
 
+    yield* Effect.promise(() => appEnvReady)
     ensureLoopbackNoProxy()
     useEnvProxy()
 
@@ -366,8 +378,9 @@ const main = Effect.gen(function* () {
     logger.log("loading task finished")
   }).pipe(forwardInitializationFailure(serverReady), Effect.forkChild)
 
-  yield* Fiber.await(loadingTask)
-
+  // Create windows before awaiting the loading task: the renderer only waits on
+  // `serverReady` (resolved as soon as the sidecar spawns), so the splash can
+  // paint while the sidecar starts up and passes its health check.
   const windows = restoreMainWindows()
   if (windows.length) {
     createMenu({
@@ -383,6 +396,8 @@ const main = Effect.gen(function* () {
       },
     })
   }
+
+  yield* Fiber.await(loadingTask)
 })
 
 Effect.runFork(main)
