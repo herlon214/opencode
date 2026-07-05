@@ -12,19 +12,19 @@ const ALL_TIME_TIMESERIES_BY_MODEL_LIMIT = 2048
 const MODEL_BREAKDOWN_LIMIT = 64
 const AGENT_BREAKDOWN_LIMIT = 6
 
-function timeCondition(days: number | undefined): ReturnType<typeof sql.raw> | typeof sql.empty {
-  if (!days || days <= 0) return sql.empty
+function timeCondition(days: number | undefined) {
+  if (!days || days <= 0) return sql.empty()
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
   return sql`AND s.time_updated >= ${cutoff}`
 }
 
-function allTimeTimeseriesLimit(days: number | undefined): ReturnType<typeof sql.raw> | typeof sql.empty {
-  if (days && days > 0) return sql.empty
+function allTimeTimeseriesLimit(days: number | undefined) {
+  if (days && days > 0) return sql.empty()
   return sql`LIMIT ${ALL_TIME_TIMESERIES_LIMIT}`
 }
 
-function allTimeTimeseriesByModelLimit(days: number | undefined): ReturnType<typeof sql.raw> | typeof sql.empty {
-  if (days && days > 0) return sql.empty
+function allTimeTimeseriesByModelLimit(days: number | undefined) {
+  if (days && days > 0) return sql.empty()
   return sql`LIMIT ${ALL_TIME_TIMESERIES_BY_MODEL_LIMIT}`
 }
 
