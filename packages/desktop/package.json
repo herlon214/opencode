@@ -15,7 +15,7 @@
     "dev": "electron-vite dev",
     "prebuild": "bun ./scripts/prebuild.ts",
     "build": "electron-vite build",
-    "build:local": "OPENCODE_CHANNEL=prod bun ./scripts/prebuild.ts && OPENCODE_CHANNEL=prod OPENCODE_UNSIGNED=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-vite build && OPENCODE_CHANNEL=prod OPENCODE_UNSIGNED=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.config.ts",
+    "build:local": "OPENCODE_CHANNEL=prod bun ./scripts/prebuild.ts && OPENCODE_CHANNEL=prod OPENCODE_UNSIGNED=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-vite build && OPENCODE_CHANNEL=prod OPENCODE_UNSIGNED=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.config.ts && bun ./scripts/install-local.ts",
     "preview": "electron-vite preview",
     "package": "electron-builder --config electron-builder.config.ts",
     "package:local": "OPENCODE_CHANNEL=prod OPENCODE_UNSIGNED=1 electron-builder --config electron-builder.config.ts",
