@@ -308,12 +308,16 @@ export const dict = {
   "dialog.mcp.description": "{{enabled}} of {{total}} enabled",
   "dialog.mcp.empty": "No MCPs configured",
 
+  "dialog.skills.empty": "No skills available",
+  "dialog.skills.count": "{{total}} skill(s)",
+
   "dialog.lsp.empty": "LSPs auto-detected from file types",
   "dialog.plugins.empty": "Plugins configured in opencode.json",
 
   "mcp.status.connected": "connected",
   "mcp.status.failed": "failed",
   "mcp.status.needs_auth": "needs auth",
+  "mcp.status.needs_client_registration": "needs registration",
   "mcp.status.disabled": "disabled",
   "mcp.auth.clickToAuthenticate": "Click to authenticate",
 
@@ -1046,6 +1050,8 @@ export const dict = {
   "settings.commands.description": "Command settings will be configurable here.",
   "settings.mcp.title": "MCP",
   "settings.mcp.description": "MCP settings will be configurable here.",
+  "settings.skills.title": "Skills",
+  "settings.skills.description": "Skills available in this project.",
 
   "settings.permissions.title": "Permissions",
   "settings.permissions.description": "Control what tools the server can use by default.",

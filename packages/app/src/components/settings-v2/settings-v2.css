@@ -6,7 +6,28 @@
 }
 
 [data-component="dialog-v2"][data-variant="settings"] [data-slot="dialog-container"] {
+  position: relative;
   background: var(--v2-background-bg-base);
+}
+
+[data-slot="settings-v2-close-button"] {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--v2-icon-icon-muted);
+
+  &:hover {
+    background: var(--v2-overlay-simple-overlay-hover);
+  }
 }
 
 [data-component="dialog-v2"][data-variant="settings"] [data-slot="dialog-body"] {
@@ -718,4 +739,117 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.settings-v2-tab-body.settings-v2-mcp {
+  gap: 0;
+}
+
+.settings-v2-mcp-count {
+  font-size: 11px;
+  font-weight: 440;
+  line-height: 1;
+  color: var(--v2-text-text-muted);
+}
+
+.settings-v2-mcp [data-component="settings-v2-list"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px;
+  border-radius: 6px;
+}
+
+.settings-v2-mcp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-v2-mcp-row:not(:last-child) {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 0.5px solid var(--v2-border-border-base);
+}
+
+.settings-v2-mcp-lead {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.settings-v2-mcp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.settings-v2-mcp-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-v2-mcp-main {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-v2-mcp-name {
+  font-size: 13px;
+  font-weight: 530;
+  line-height: 1;
+  color: var(--v2-text-text-base);
+}
+
+.settings-v2-mcp-status-label {
+  font-size: 11px;
+  font-weight: 440;
+  line-height: 1;
+  color: var(--v2-text-text-muted);
+}
+
+.settings-v2-mcp-error {
+  font-size: 11px;
+  font-weight: 440;
+  line-height: 1;
+  color: var(--v2-text-text-muted);
+}
+
+.settings-v2-mcp-control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.settings-v2-mcp-empty {
+  padding-block: 20px;
+  font-size: 13px;
+  font-weight: 440;
+  line-height: 1;
+  color: var(--v2-text-text-muted);
+}
+
+.settings-v2-mcp-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-block: 48px;
+  font-size: 13px;
+  font-weight: 440;
+  line-height: 1;
+  color: var(--v2-text-text-muted);
+  text-align: center;
 }

@@ -1,4 +1,5 @@
 import { Component } from "solid-js"
+import { Dialog as KobalteDialog } from "@kobalte/core/dialog"
 import { Dialog } from "@opencode-ai/ui/v2/dialog-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -10,6 +11,8 @@ import { SettingsProvidersV2 } from "./providers"
 import { SettingsModelsV2 } from "./models"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
+import { SettingsMcpV2 } from "./mcp"
+import { SettingsSkillsV2 } from "./skills"
 
 export const DialogSettings: Component<{
   sessionID?: string
@@ -19,6 +22,25 @@ export const DialogSettings: Component<{
 
   return (
     <Dialog size="x-large" variant="settings" class="settings-v2-dialog">
+      <KobalteDialog.CloseButton
+        data-slot="settings-v2-close-button"
+        aria-label={language.t("common.close")}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            d="M12.4446 3.55469L3.55566 12.4436M3.55566 3.55469L12.4446 12.4436"
+            stroke="currentColor"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </KobalteDialog.CloseButton>
       <TabsV2 orientation="vertical" variant="settings" defaultValue="general" class="settings-v2">
         <TabsV2.List>
           <div class="flex flex-col justify-between h-full w-full">
@@ -53,6 +75,14 @@ export const DialogSettings: Component<{
                       <Icon name="models" />
                       {language.t("settings.models.title")}
                     </TabsV2.Trigger>
+                    <TabsV2.Trigger value="mcp">
+                      <Icon name="mcp" />
+                      {language.t("settings.mcp.title")}
+                    </TabsV2.Trigger>
+                    <TabsV2.Trigger value="skills">
+                      <Icon name="brain" />
+                      {language.t("settings.skills.title")}
+                    </TabsV2.Trigger>
                   </div>
                 </div>
               </div>
@@ -77,6 +107,12 @@ export const DialogSettings: Component<{
         </TabsV2.Content>
         <TabsV2.Content value="models" class="settings-v2-panel">
           <SettingsModelsV2 />
+        </TabsV2.Content>
+        <TabsV2.Content value="mcp" class="settings-v2-panel">
+          <SettingsMcpV2 sessionID={props.sessionID} />
+        </TabsV2.Content>
+        <TabsV2.Content value="skills" class="settings-v2-panel">
+          <SettingsSkillsV2 sessionID={props.sessionID} />
         </TabsV2.Content>
       </TabsV2>
     </Dialog>

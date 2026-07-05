@@ -39,6 +39,7 @@ export type State = {
   command: Command[]
   reference: ReferenceInfo[]
   skill: SkillV2Info[]
+  skill_ready: boolean
   project: string
   projectMeta: ProjectMeta | undefined
   icon: string | undefined

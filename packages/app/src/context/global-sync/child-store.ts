@@ -219,6 +219,9 @@ export function createChildStoreManager(input: {
             get skill() {
               return skillQuery.isLoading ? [] : (skillQuery.data ?? [])
             },
+            get skill_ready() {
+              return !skillQuery.isLoading
+            },
             session: [],
             sessionTotal: 0,
             session_status: {},

@@ -17,6 +17,7 @@ function directoryState() {
     command: [],
     reference: [],
     skill: [],
+    skill_ready: true,
     project: "",
     projectMeta: undefined,
     icon: undefined,
