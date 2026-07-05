@@ -1,6 +1,6 @@
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { AssistantMessage, Part, SessionStatus, SnapshotFileDiff, UserMessage } from "@opencode-ai/sdk/v2"
-import { groupParts, renderable, type PartGroup } from "@opencode-ai/session-ui/message-part"
+import { groupParts, hasTextContent, renderable, type PartGroup } from "@opencode-ai/session-ui/message-part"
 import { reasoningHeading } from "@opencode-ai/session-ui/message-part-reasoning"
 import { TimelineRow, type SummaryDiff } from "./timeline-row"
 
@@ -33,7 +33,7 @@ export type TimelineRowMap = {
     lastThoughtHeading?: string
     lastTextGroup?: { type: "part"; group: PartGroup }
   }
-  Thinking: { userMessageID: string; reasoningHeading?: string; reasoningTokens: number }
+  Thinking: { userMessageID: string; reasoningHeading?: string }
   Retry: { userMessageID: string }
   DiffSummary: { userMessageID: string; diffs: SummaryDiff[] }
   Error: { userMessageID: string; text: string }
@@ -202,14 +202,19 @@ export namespace Timeline {
         .flatMap((message) => getMessageParts(message.id))
         .map((part) => (part.type === "reasoning" ? part.text ?? "" : ""))
 
-      const heading = reasoningTexts.map(reasoningHeading).find((value): value is string => !!value)
-      const reasoningTokens = Math.round(reasoningTexts.reduce((sum, text) => sum + text.length, 0) / 3)
-
+      let heading: string | undefined
+      for (const text of reasoningTexts) {
+        heading = reasoningHeading(text)
+        if (heading) break
+      }
+      // The live token count is deliberately NOT part of the row: it changes on
+      // every reasoning delta, which would defeat row reuse and invalidate every
+      // downstream memo that iterates the full timeline. The thinking component
+      // reads it through its own fine-grained signal instead.
       rows.push(
         new TimelineRow.Thinking({
           userMessageID: userMessage.id,
           reasoningHeading: heading,
-          reasoningTokens,
         }),
       )
     }
@@ -263,7 +268,7 @@ export namespace Timeline {
       if (group.type !== "part") continue
       if (group.ref.messageID !== lastAssistantMessageID) continue
       const part = partByID.get(group.ref.partID)
-      if (part?.type === "text" && part.text?.trim()) return i
+      if (part?.type === "text" && hasTextContent(part.text)) return i
     }
     return -1
   }
@@ -292,7 +297,7 @@ export namespace Timeline {
       if (item.group.type !== "part") continue
       const part = partByID.get(item.group.ref.partID)
       if (part?.type !== "text") continue
-      if (!(part.text ?? "").trim()) continue
+      if (!hasTextContent(part.text)) continue
       return item
     }
     return undefined

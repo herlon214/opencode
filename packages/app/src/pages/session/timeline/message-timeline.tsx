@@ -141,12 +141,15 @@ function TimelineThinkingRow(props: {
   reasoningTokens: number
 }) {
   const language = useLanguage()
+  // Memoized so per-delta updates touch only this component's text node; the
+  // row itself stays structurally stable while reasoning streams.
+  const tokens = createMemo(() => props.reasoningTokens)
 
   return (
     <div data-slot="session-turn-thinking">
       <TextShimmer text={language.t("ui.sessionTurn.status.thinking")} />
-      <Show when={props.reasoningTokens > 0}>
-        <span data-slot="session-turn-thinking-tokens">({props.reasoningTokens} tokens)</span>
+      <Show when={tokens() > 0}>
+        <span data-slot="session-turn-thinking-tokens">({tokens()} tokens)</span>
       </Show>
       <Show when={!props.showReasoningSummaries}>
         <TextReveal text={props.reasoningHeading} class="session-turn-thinking-heading" travel={25} duration={700} />
@@ -1487,13 +1490,23 @@ export function MessageTimeline(props: {
       }
       case "Thinking": {
         const thinkingRow = row as Accessor<TimelineRowByTag<"Thinking">>
+        const liveReasoningTokens = () => {
+          let chars = 0
+          for (const message of assistantMessagesByParent().get(thinkingRow().userMessageID) ??
+            emptyAssistantMessages) {
+            for (const part of getMsgParts(message.id)) {
+              if (part.type === "reasoning") chars += part.text?.length ?? 0
+            }
+          }
+          return Math.round(chars / 3)
+        }
         return (
           <TimelineRowFrame row={thinkingRow}>
             <div data-slot="session-turn-message-container" class="w-full px-4 md:px-5">
               <TimelineThinkingRow
                 reasoningHeading={thinkingRow().reasoningHeading}
                 showReasoningSummaries={settings.general.showReasoningSummaries()}
-                reasoningTokens={thinkingRow().reasoningTokens}
+                reasoningTokens={liveReasoningTokens()}
               />
             </div>
           </TimelineRowFrame>
