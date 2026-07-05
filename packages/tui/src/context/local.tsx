@@ -450,6 +450,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             variant: variant ?? null,
           })
         },
+        hasSession(sessionID: string) {
+          return !!modelStore.session[sessionID]
+        },
       }
     }
 
