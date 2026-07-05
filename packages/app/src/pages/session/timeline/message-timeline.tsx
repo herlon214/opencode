@@ -1306,7 +1306,11 @@ export function MessageTimeline(props: {
               {title(false)}
             </div>
             <Show when={lastTextGroup()}>
-              {(group) => renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+              {(group) => (
+                <div data-component="in-progress-group-list">
+                  {renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+                </div>
+              )}
             </Show>
           </div>
         }
@@ -1329,7 +1333,11 @@ export function MessageTimeline(props: {
             </div>
           </Collapsible.Trigger>
           <Show when={!open() && lastTextGroup()}>
-            {(group) => renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+            {(group) => (
+              <div data-component="in-progress-group-list">
+                {renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+              </div>
+            )}
           </Show>
           <Collapsible.Content>
             <div data-component="in-progress-group-list">
