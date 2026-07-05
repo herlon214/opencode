@@ -1830,6 +1830,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
 PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   const data = useData()
   const i18n = useI18n()
+  const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
   const part = () => props.part as ReasoningPart
   const streaming = createMemo(
     () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
@@ -1840,6 +1841,11 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   const durationLabel = createMemo(() => {
     const duration = reasoningDuration(part())
     return duration === undefined ? undefined : formatDuration(duration)
+  })
+  const tokenLabel = createMemo(() => {
+    const value = Math.round((text()?.length ?? 0) / 3)
+    if (value <= 0) return undefined
+    return i18n.t("ui.sessionTurn.thinking.tokens", { count: numfmt().format(value) })
   })
   const showBody = createMemo(() => props.showReasoningSummaries ?? true)
 
@@ -1857,6 +1863,9 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
             />
             <Show when={heading()}>
               <span data-slot="reasoning-part-heading">: {heading()}</span>
+            </Show>
+            <Show when={tokenLabel()}>
+              <span data-slot="reasoning-part-tokens">{tokenLabel()}</span>
             </Show>
             <Show when={durationLabel()}>
               <span data-slot="reasoning-part-duration"> · {durationLabel()}</span>

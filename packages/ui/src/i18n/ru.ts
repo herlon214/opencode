@@ -64,6 +64,7 @@ export const dict = {
   "ui.sessionTurn.status.runningCommands": "Выполнение команд",
   "ui.sessionTurn.status.thinking": "Размышление",
   "ui.sessionTurn.status.thinkingWithTopic": "Размышление - {{topic}}",
+  "ui.sessionTurn.thinking.tokens": " · {{count}} токены",
   "ui.sessionTurn.status.gatheringThoughts": "Сбор мыслей",
   "ui.sessionTurn.status.consideringNextSteps": "Рассмотрение следующих шагов",
 

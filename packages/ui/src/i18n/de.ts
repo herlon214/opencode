@@ -70,6 +70,7 @@ export const dict = {
   "ui.sessionTurn.status.runningCommands": "Befehle ausführen",
   "ui.sessionTurn.status.thinking": "Denken",
   "ui.sessionTurn.status.thinkingWithTopic": "Denken - {{topic}}",
+  "ui.sessionTurn.thinking.tokens": " · {{count}} Token",
   "ui.sessionTurn.status.gatheringThoughts": "Gedanken sammeln",
   "ui.sessionTurn.status.consideringNextSteps": "Nächste Schritte erwägen",
 
