@@ -216,7 +216,7 @@ function sessionsTimeseriesByModel(
       .filter((session) => session.time.updated >= cutoff && session.model)
       .map((session) => {
         const model = session.model!
-        const label = `${model.providerID}/${model.id}`
+        const label = model.id
         return [
           {
             date: new Date(session.time.updated).toISOString().slice(0, 10),

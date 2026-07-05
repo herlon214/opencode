@@ -221,7 +221,7 @@ export const StatsHandler = HttpApiBuilder.group(Api, "server.stats", (handlers)
               /* ignore parse errors */
             }
             return {
-              model: model ? `${model.providerID}/${model.id}` : "unknown",
+              model: model?.id ?? "unknown",
               providerID: model?.providerID ?? "unknown",
               modelID: model?.id ?? "unknown",
               sessions: r.sessions ?? 0,
@@ -290,7 +290,7 @@ export const StatsHandler = HttpApiBuilder.group(Api, "server.stats", (handlers)
             }
             return {
               date: r.date,
-              model: model ? `${model.providerID}/${model.id}` : "unknown",
+              model: model?.id ?? "unknown",
               providerID: model?.providerID ?? "unknown",
               modelID: model?.id ?? "unknown",
               cost: r.cost ?? 0,
