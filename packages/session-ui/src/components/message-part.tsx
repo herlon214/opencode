@@ -757,14 +757,22 @@ function index<T extends { id: string }>(items: readonly T[]) {
   return new Map(items.map((item) => [item.id, item] as const))
 }
 
+const NON_WHITESPACE = /\S/
+
+// Equivalent to `!!text?.trim()` without allocating a trimmed copy of the
+// (potentially large, still-streaming) text on every check.
+export function hasTextContent(text: string | undefined | null) {
+  return !!text && NON_WHITESPACE.test(text)
+}
+
 export function renderable(part: PartType, showReasoningSummaries = true) {
   if (part.type === "tool") {
     if (HIDDEN_TOOLS.has(part.tool)) return false
     if (part.tool === "question") return part.state.status !== "pending" && part.state.status !== "running"
     return true
   }
-  if (part.type === "text") return !!part.text?.trim()
-  if (part.type === "reasoning") return showReasoningSummaries && !!part.text?.trim()
+  if (part.type === "text") return hasTextContent(part.text)
+  if (part.type === "reasoning") return showReasoningSummaries && hasTextContent(part.text)
   return !!PART_MAPPING[part.type]
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { canReusePendingBlock, project, stream } from "./markdown-stream"
+import { canReusePendingBlock, project, stream, type Projection } from "./markdown-stream"
 
 describe("markdown stream", () => {
   test("heals incomplete emphasis while streaming", () => {
@@ -40,6 +40,20 @@ describe("markdown stream", () => {
       { raw: "# Plan\n\n", src: "# Plan\n\n", mode: "full" },
       { raw: "Finished paragraph.\n\n", src: "Finished paragraph.\n\n", mode: "full" },
       { raw: "- live item", src: "- live item", mode: "live" },
+    ])
+  })
+
+  test("keeps a trailing list live while appended text could still join it", () => {
+    // "1. a\n\n2" lexes as list + paragraph, but appending "." merges both
+    // into a single list token, so the list must not freeze yet.
+    expect(stream("1. a\n\n2", true)).toEqual([{ raw: "1. a\n\n2", src: "1. a\n\n2", mode: "live" }])
+  })
+
+  test("freezes a list once a non-list block separates it from the tail", () => {
+    expect(stream("1. a\n\n2. b\n\nMiddle prose.\n\nTail", true)).toEqual([
+      { raw: "1. a\n\n2. b\n\n", src: "1. a\n\n2. b\n\n", mode: "full" },
+      { raw: "Middle prose.\n\n", src: "Middle prose.\n\n", mode: "full" },
+      { raw: "Tail", src: "Tail", mode: "live" },
     ])
   })
 
@@ -175,6 +189,64 @@ describe("markdown stream", () => {
       { raw: "```ts\nconst x = 1\n```\n", src: "const x = 1", mode: "code", language: "ts", complete: true },
       { raw: "after", src: "after", mode: "live" },
     ])
+  })
+
+  describe("incremental projection parity", () => {
+    // Streams `text` chunk by chunk through project() and asserts that every
+    // intermediate projection is byte-identical to a from-scratch stream() of
+    // the same prefix.
+    const simulate = (text: string, sizes: number[]) => {
+      let projection: Projection | undefined
+      let cursor = 0
+      let step = 0
+      while (cursor < text.length) {
+        cursor = Math.min(text.length, cursor + sizes[step % sizes.length]!)
+        const prefix = text.slice(0, cursor)
+        projection = project(projection, prefix, true)
+        expect(projection.blocks).toEqual(stream(prefix, true))
+        step++
+      }
+      return projection!
+    }
+
+    const corpus = {
+      "paragraph continuation": "Hello world, this paragraph keeps growing with more and more words as it streams in.",
+      "new block after blank line": "First paragraph.\n\nSecond paragraph here.\n\nThird one closes it out.",
+      "list items added": "Intro line.\n\n- one\n- two\n- three\n\nAfter the list.",
+      "loose ordered list": "1. first item\n\n2. second item\n\n3. third item\n\nAfter the list.",
+      "loose unordered list": "- alpha\n\n- beta\n\nAfter the list.",
+      "ordered list interrupted then resumed": "1. a\n\n2. b\n\nmore prose\n\n3. not an item",
+      "setext heading formed late": "Title line\n===\n\nBody text after the late heading.",
+      "table rows appended": "| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\nDone with the table.",
+      "fence opened and closed": "Before the code.\n\n```ts\nconst x = 1\nconst y = 2\n```\n\nAfter prose resumes.",
+      "headings and prose": "# Plan\n\nFirst step of the plan.\n\n## Next\n\nMore detail follows here.",
+      "blockquote lazy continuation": "> quoted text\nthat continues lazily\n\nAfter the quote.",
+      "leading blank lines": "\n\nLeading blanks then text.\n\nMore text after.",
+      "reference definition mid-stream": "See [docs][1] for info.\n\nMore prose here.\n\n[1]: https://example.com",
+    }
+
+    for (const [name, text] of Object.entries(corpus)) {
+      test(name, () => {
+        for (const sizes of [[1], [3], [7], [5, 1, 11]]) {
+          expect(simulate(text, sizes).blocks).toEqual(stream(text, true))
+        }
+      })
+    }
+
+    test("reuses frozen block references instead of re-lexing them", () => {
+      const previous = project(undefined, "# Done\n\nFinished paragraph.\n\nGrowing tail", true)
+      const next = project(previous, `${previous.text} keeps growing`, true)
+
+      expect(previous.blocks.length).toBe(3)
+      expect(next.blocks[0]).toBe(previous.blocks[0]!)
+      expect(next.blocks[1]).toBe(previous.blocks[1]!)
+      expect(next.blocks).toEqual(stream(next.text, true))
+    })
+
+    test("returns the previous blocks unchanged when no text was appended", () => {
+      const previous = project(undefined, "Some prose.", true)
+      expect(project(previous, previous.text, true).blocks).toBe(previous.blocks)
+    })
   })
 
   test("closes tilde fences split across provider deltas", () => {

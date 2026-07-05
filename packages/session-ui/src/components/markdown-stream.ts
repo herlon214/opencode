@@ -58,12 +58,28 @@ export function stream(text: string, live: boolean): Block[] {
   const last = tokens[tail]
   if (!last) return [{ raw: text, src: heal(text), mode: "live" }] satisfies Block[]
 
+  // A committed list can still absorb what follows it: once appended text
+  // turns the trailing paragraph into another item (e.g. "1. a\n\n2" + "."),
+  // the lexer retroactively merges both into one list token. Any list run
+  // adjacent to the live tail therefore stays live instead of freezing. A
+  // code fence terminates a preceding list for good, so a code tail keeps
+  // earlier blocks frozen.
+  let start = tail
+  if (last.type !== "code") {
+    while (start > 0) {
+      let prev = start - 1
+      while (prev > 0 && tokens[prev]?.type === "space") prev--
+      if (tokens[prev]?.type !== "list") break
+      start = prev
+    }
+  }
+
   const result: Block[] = []
-  for (let index = 0; index < tail; index++) {
+  for (let index = 0; index < start; index++) {
     const token = tokens[index]
     if (!token || token.type === "space") continue
     let raw = token.raw
-    while (tokens[index + 1]?.type === "space" && index + 1 < tail) raw += tokens[++index]!.raw
+    while (tokens[index + 1]?.type === "space" && index + 1 < start) raw += tokens[++index]!.raw
     if (token.type === "code") {
       const code = token as Tokens.Code
       result.push({ raw, src: code.text, mode: "code", language: language(code.lang), complete: true })
@@ -73,7 +89,7 @@ export function stream(text: string, live: boolean): Block[] {
   }
 
   const raw = tokens
-    .slice(tail)
+    .slice(start)
     .map((token) => token.raw)
     .join("")
   if (last.type !== "code") return [...result, { raw, src: heal(raw), mode: "live" }]
@@ -94,17 +110,30 @@ export function project(previous: Projection | undefined, text: string, live: bo
   if (!live || !previous || !text.startsWith(previous.text)) return { text, blocks: stream(text, live) }
   const tail = previous.blocks.at(-1)
   const suffix = text.slice(previous.text.length)
-  if (!suffix || tail?.mode !== "code" || tail.complete || closesFence(tail.raw, suffix))
-    return { text, blocks: stream(text, live) }
-  return {
-    text,
-    blocks: [
-      ...previous.blocks.slice(0, -1),
-      {
-        ...tail,
-        raw: tail.raw + suffix,
-        src: tail.src + suffix,
-      },
-    ],
-  }
+  if (!suffix) return { text, blocks: previous.blocks }
+  // The append fast path only applies once the fence header line is complete;
+  // before that, appended characters still belong to the language spec, not
+  // the code body.
+  if (tail?.mode === "code" && !tail.complete && tail.raw.includes("\n") && !closesFence(tail.raw, suffix))
+    return {
+      text,
+      blocks: [
+        ...previous.blocks.slice(0, -1),
+        {
+          ...tail,
+          raw: tail.raw + suffix,
+          src: tail.src + suffix,
+        },
+      ],
+    }
+  // Appended text can only extend or follow the last block: every earlier
+  // block ends at a line boundary the lexer already committed to, so those
+  // blocks are kept as-is and only the tail is re-lexed with the suffix.
+  // Reference definitions are the one document-wide construct, so they fall
+  // back to a full projection (which collapses to a single live block). The
+  // endsWith guard covers tokens whose raw is normalized rather than sliced
+  // from the source (e.g. a list ending in an empty "- " item), where the
+  // tail's true source can't be recovered from the token.
+  if (!tail || refs(text) || !previous.text.endsWith(tail.raw)) return { text, blocks: stream(text, live) }
+  return { text, blocks: [...previous.blocks.slice(0, -1), ...stream(tail.raw + suffix, live)] }
 }
