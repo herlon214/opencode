@@ -10,6 +10,7 @@ export type PromptInputTransientState = {
   draggingType: "image" | "@mention" | null
   mode: "normal" | "shell"
   applyingHistory: boolean
+  modelOpen: boolean
   variantOpen: boolean
 }
 
@@ -21,6 +22,7 @@ function resetPromptInputTransientState(setStore: SetStoreFunction<PromptInputTr
     draggingType: null,
     mode: "normal",
     applyingHistory: false,
+    modelOpen: false,
     variantOpen: false,
   })
 }
@@ -34,6 +36,7 @@ export function createPromptInputTransientState(identity: Accessor<unknown>, pla
     draggingType: null,
     mode: "normal",
     applyingHistory: false,
+    modelOpen: false,
     variantOpen: false,
   })
 

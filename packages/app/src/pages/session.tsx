@@ -92,7 +92,6 @@ import { useUsageExceededDialogs } from "./session/usage-exceeded-dialogs"
 import { createSessionOwnership } from "./session/session-ownership"
 import { SideChatPanel } from "./session/side-chat/side-chat-panel"
 import { createSessionLineage } from "./session/session-lineage"
-import { createWorkflowRunner } from "./session/use-workflow-runner"
 
 type FollowupItem = FollowupDraft & { id: string }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
@@ -1044,14 +1043,11 @@ export default function Page() {
 
   useComposerCommands({ focusInput })
   useSettingsCommand()
-  let startWorkflowRef: ((name: string) => void) | undefined
-
   useSessionCommands({
     navigateMessageByOffset,
     setActiveMessage,
     focusInput,
     review: reviewTab,
-    startWorkflow: (name: string) => startWorkflowRef?.(name),
   })
 
   const openReviewFile = createOpenReviewFile({
@@ -1781,55 +1777,6 @@ export default function Page() {
     })
   }
 
-  const workflow = createWorkflowRunner()
-
-  const workflowInput = () => {
-    const sessionID = params.id
-    if (!sessionID) return
-    const currentModel = local.model.current()
-    const currentAgent = local.agent.current()
-    const model = currentModel
-      ? { providerID: currentModel.provider.id, modelID: currentModel.id }
-      : { providerID: "", modelID: "" }
-    const agent = currentAgent?.name ?? ""
-    return {
-      sessionID,
-      queuePrompt: (text: string) =>
-        queueFollowup({
-          sessionID,
-          sessionDirectory: sdk().directory,
-          prompt: [{ type: "text", content: text, start: 0, end: text.length }],
-          context: [],
-          agent,
-          model,
-        }),
-      queueCommand: (name: string) => {
-        const builtin = command.options.find((opt) => opt.slash === name)
-        queueCommand(builtin?.id ?? name, builtin?.title ?? `/${name}`)
-      },
-      isCommandPrompt: (name: string) => sync().data.command.some((cmd) => cmd.name === name),
-    }
-  }
-
-  const startWorkflow = (name: string) => {
-    const input = workflowInput()
-    if (!input) return
-    workflow.start(name, input)
-  }
-  startWorkflowRef = startWorkflow
-
-  const cancelWorkflow = () => {
-    const sessionID = params.id
-    if (!sessionID) return
-    workflow.cancel(sessionID)
-  }
-
-  const activeWorkflow = createMemo(() => {
-    const sessionID = params.id
-    if (!sessionID) return
-    return workflow.run(sessionID)
-  })
-
   const removeFollowup = (id: string) => {
     const sessionID = params.id
     if (!sessionID) return
@@ -1969,20 +1916,6 @@ export default function Page() {
   createEffect(() => {
     const sessionID = params.id
     if (!sessionID) return
-    const run = workflow.run(sessionID)
-    if (!run) return
-    if (busy(sessionID)) return
-    if (isChildSession()) return
-    if (composer.blocked()) return
-    if (queuedFollowups().length > 0) return
-    const input = workflowInput()
-    if (!input) return
-    workflow.advance(sessionID, input)
-  })
-
-  createEffect(() => {
-    const sessionID = params.id
-    if (!sessionID) return
 
     const item = queuedFollowups()[0]
     if (!item) return
@@ -2111,17 +2044,6 @@ export default function Page() {
               onRestore: restore,
             }
           : undefined,
-      workflow: () => {
-        const run = activeWorkflow()
-        if (!run) return undefined
-        return {
-          name: run.name,
-          description: run.description,
-          steps: run.steps,
-          current: run.current,
-          onCancel: cancelWorkflow,
-        }
-      },
       onResponseSubmit: resumeScroll,
       openParent: () => {
         const id = info()?.parentID

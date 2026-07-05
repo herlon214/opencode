@@ -134,6 +134,8 @@ export function ModelSelectorPopover(props: {
   children?: JSX.Element
   triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: (cause: "escape" | "select") => void
 }) {
   const [store, setStore] = createStore<{
@@ -149,7 +151,8 @@ export function ModelSelectorPopover(props: {
 
   const close = (dismiss: Dismiss) => {
     setStore("dismiss", dismiss)
-    setStore("open", false)
+    props.onOpenChange?.(false)
+    if (props.open === undefined) setStore("open", false)
   }
 
   const handleManage = () => {
@@ -169,10 +172,11 @@ export function ModelSelectorPopover(props: {
 
   return (
     <Kobalte
-      open={store.open}
+      open={props.open ?? store.open}
       onOpenChange={(next) => {
         if (next) setStore("dismiss", null)
-        setStore("open", next)
+        props.onOpenChange?.(next)
+        if (props.open === undefined) setStore("open", next)
       }}
       modal={false}
       placement="top-start"
@@ -244,6 +248,8 @@ export function ModelSelectorPopoverV2(props: {
   children?: JSX.Element
   triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
 }) {
   const model = props.model ?? useLocal().model
@@ -298,7 +304,7 @@ export function ModelSelectorPopoverV2(props: {
     }
     requestAnimationFrame(complete)
   }
-  const setOpen = (open: boolean) => {
+  const applyOpen = (open: boolean) => {
     if (open) {
       restoreTrigger = true
       setStore({ open: true, active: initialActive() })
@@ -311,6 +317,10 @@ export function ModelSelectorPopoverV2(props: {
       return
     }
     setStore({ open: false, search: "", active: "" })
+  }
+  const setOpen = (open: boolean) => {
+    props.onOpenChange?.(open)
+    applyOpen(open)
   }
   const select = (item: ModelItem) => {
     model.set({ modelID: item.id, providerID: item.provider.id }, { recent: true })
@@ -364,8 +374,14 @@ export function ModelSelectorPopoverV2(props: {
     )
   })
 
+  createEffect(() => {
+    if (props.open === undefined) return
+    if (props.open === store.open) return
+    applyOpen(props.open)
+  })
+
   return (
-    <MenuV2 open={store.open} modal={false} placement="top-start" gutter={6} onOpenChange={setOpen}>
+    <MenuV2 open={props.open ?? store.open} modal={false} placement="top-start" gutter={6} onOpenChange={setOpen}>
       <MenuV2.Trigger as={props.triggerAs ?? "div"} {...props.triggerProps}>
         {props.children}
       </MenuV2.Trigger>

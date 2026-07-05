@@ -47,7 +47,6 @@ export const dict = {
   "command.language.set": "Use language: {{language}}",
 
   "command.session.new": "New session",
-  "command.session.workflow": "Run workflow: {{name}}",
   "command.file.open": "Open file",
   "command.tab.close": "Close tab",
   "command.context.addSelection": "Add selection to context",
@@ -693,10 +692,6 @@ export const dict = {
   "session.followupDock.clear": "Clear all queued messages",
   "session.followupDock.collapse": "Collapse queued messages",
   "session.followupDock.expand": "Expand queued messages",
-  "session.workflowDock.title": "Workflow: {{name}}",
-  "session.workflowDock.progress": "Step {{current}} of {{total}}",
-  "session.workflowDock.cancel": "Cancel workflow",
-  "session.workflowDock.inputWaiting": "Waiting for input…",
   "session.revertDock.summary.one": "{{count}} rolled back message",
   "session.revertDock.summary.other": "{{count}} rolled back messages",
   "session.revertDock.collapse": "Collapse rolled back messages",

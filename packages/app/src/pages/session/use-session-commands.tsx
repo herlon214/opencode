@@ -27,7 +27,6 @@ export type SessionCommandContext = {
   setActiveMessage: (message: UserMessage | undefined) => void
   focusInput: () => void
   review?: () => boolean
-  startWorkflow?: (name: string) => void
 }
 
 const withCategory = (category: string) => {
@@ -627,20 +626,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-  const workflowCmds = () => {
-    const workflows = sync().data.config.workflows
-    if (!workflows) return []
-    return Object.entries(workflows).map(([name, def]) =>
-      sessionCommand({
-        id: `session.workflow.${name}`,
-        title: language.t("command.session.workflow", { name }),
-        description: def.description,
-        slash: `workflow ${name}`,
-        onSelect: () => actions.startWorkflow?.(name),
-      }),
-    )
-  }
-
   command.register("session", () => [
     ...sessionCmds(),
     ...shareCmds(),
@@ -651,6 +636,5 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     ...messageCmds(),
     ...mcpCmds(),
     ...permissionsCmds(),
-    ...workflowCmds(),
   ])
 }
