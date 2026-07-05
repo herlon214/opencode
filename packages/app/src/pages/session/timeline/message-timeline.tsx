@@ -1236,9 +1236,8 @@ export function MessageTimeline(props: {
     const stepCount = createMemo(
       () => `${groupCount()} ${language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}`,
     )
-    const heading = createMemo(() =>
-      !open() ? (props.row().lastTextHeading ?? props.row().lastThoughtHeading) : undefined,
-    )
+    const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
+    const lastTextGroup = createMemo(() => props.row().lastTextGroup)
     const canExpand = createMemo(() => active() || groupCount() > 1)
     const title = (showSummary: boolean) => (
       <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
@@ -1306,6 +1305,9 @@ export function MessageTimeline(props: {
             <div data-component="in-progress-group-trigger">
               {title(false)}
             </div>
+            <Show when={lastTextGroup()}>
+              {(group) => renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+            </Show>
           </div>
         }
       >
@@ -1326,6 +1328,9 @@ export function MessageTimeline(props: {
               <Collapsible.Arrow />
             </div>
           </Collapsible.Trigger>
+          <Show when={!open() && lastTextGroup()}>
+            {(group) => renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+          </Show>
           <Collapsible.Content>
             <div data-component="in-progress-group-list">
               <Index each={props.row().groups}>
