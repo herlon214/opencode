@@ -75,18 +75,15 @@ export const SettingsFolderAccess: Component = () => {
     await persist(next)
   }
 
-  const pickFolder = async () => {
-    if (platform.platform !== "desktop") {
-      setAdding(true)
-      return
-    }
+  const browseFolder = async () => {
+    if (platform.platform !== "desktop") return
     const result = await platform.openDirectoryPickerDialog({
       title: language.t("settings.folderAccess.picker.title"),
       multiple: false,
     })
     const picked = Array.isArray(result) ? result[0] : result
     if (!picked) return
-    await addEntry(picked)
+    setManualPath(picked)
   }
 
   const submitManual = async () => {
@@ -149,7 +146,7 @@ export const SettingsFolderAccess: Component = () => {
               variant="secondary"
               icon="plus"
               disabled={saving()}
-              onClick={() => void pickFolder()}
+              onClick={() => setAdding(true)}
             >
               {language.t("settings.folderAccess.button.add")}
             </Button>
@@ -174,6 +171,17 @@ export const SettingsFolderAccess: Component = () => {
               spellcheck={false}
             />
             <div class="flex gap-2">
+              <Show when={platform.platform === "desktop"}>
+                <Button
+                  size="small"
+                  variant="secondary"
+                  icon="folder"
+                  disabled={saving()}
+                  onClick={() => void browseFolder()}
+                >
+                  {language.t("settings.folderAccess.button.browse")}
+                </Button>
+              </Show>
               <Button size="small" variant="primary" disabled={saving() || !manualPath().trim()} onClick={() => void submitManual()}>
                 {language.t("common.save")}
               </Button>

@@ -1056,6 +1056,7 @@ export const dict = {
   "settings.folderAccess.description":
     "Give agents permanent read or write access to folders outside the project, so you don't have to approve them each time. Applies globally to all projects on this machine.",
   "settings.folderAccess.button.add": "Add folder",
+  "settings.folderAccess.button.browse": "Browse",
   "settings.folderAccess.picker.title": "Choose a folder to allow",
   "settings.folderAccess.input.placeholder": "/absolute/path/to/folder",
   "settings.folderAccess.row.readonly": "RO",
