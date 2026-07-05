@@ -46,6 +46,7 @@ import { SessionRetry } from "@opencode-ai/session-ui/session-retry"
 import { isScrollKeyTarget, scrollKey, scrollKeyOwner, ScrollView } from "@opencode-ai/ui/scroll-view"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { SessionProgressIndicatorV2 } from "@opencode-ai/session-ui/v2/session-progress-indicator-v2"
+import { createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { TextReveal } from "@opencode-ai/ui/text-reveal"
@@ -1247,11 +1248,14 @@ export function MessageTimeline(props: {
     const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
     const lastTextGroup = createMemo(() => props.row().lastTextGroup)
     const canExpand = createMemo(() => active() || groupCount() > 1)
-    const speed = createMemo(() => {
-      const id = sessionID()
-      if (!id) return 0
-      return sync().data.token_rate?.[id] ?? 0
-    })
+    const speed = createDebouncedMemo(
+      createMemo(() => {
+        const id = sessionID()
+        if (!id) return 0
+        return sync().data.token_rate?.[id] ?? 0
+      }),
+      200,
+    )
     const title = (showSummary: boolean) => (
       <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
         <Show when={active()}>

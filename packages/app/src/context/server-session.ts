@@ -160,9 +160,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
   const orphanParts = new Map<string, Set<string>>()
   const removedMessages = new Map<string, Set<string>>()
   const tokenRateWindows = new Map<string, { time: number; chars: number }[]>()
-  const tokenRateLastEmit = new Map<string, number>()
   const TOKEN_RATE_WINDOW_MS = 5_000
-  const TOKEN_RATE_EMIT_MS = 250
   const CHARS_PER_TOKEN = 4
 
   const updateTokenRate = (sessionID: string, delta: string) => {
@@ -172,9 +170,6 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
     const cutoff = now - TOKEN_RATE_WINDOW_MS
     while (window.length > 0 && window[0].time < cutoff) window.shift()
     tokenRateWindows.set(sessionID, window)
-    const lastEmit = tokenRateLastEmit.get(sessionID) ?? 0
-    if (now - lastEmit < TOKEN_RATE_EMIT_MS) return
-    tokenRateLastEmit.set(sessionID, now)
     const totalChars = window.reduce((sum, entry) => sum + entry.chars, 0)
     const elapsed = window.length > 0 ? now - window[0].time : 0
     const rate = elapsed > 0 ? (totalChars / CHARS_PER_TOKEN) / (elapsed / 1000) : 0
@@ -427,7 +422,6 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
       orphanParts.delete(sessionID)
       removedMessages.delete(sessionID)
       tokenRateWindows.delete(sessionID)
-      tokenRateLastEmit.delete(sessionID)
     })
     setData(
       produce((draft) => {

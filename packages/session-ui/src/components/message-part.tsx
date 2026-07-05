@@ -35,6 +35,7 @@ import { useData } from "../context"
 import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { type UiI18n, useI18n } from "@opencode-ai/ui/context/i18n"
+import { createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { BasicTool, GenericTool, ToolDuration } from "./basic-tool"
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
@@ -1850,11 +1851,14 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
     const duration = reasoningDuration(part())
     return duration === undefined ? undefined : formatDuration(duration)
   })
-  const tokenLabel = createMemo(() => {
-    const value = Math.round((text()?.length ?? 0) / 3)
-    if (value <= 0) return undefined
-    return value
-  })
+  const tokenLabel = createDebouncedMemo(
+    createMemo(() => {
+      const value = Math.round((text()?.length ?? 0) / 3)
+      if (value <= 0) return undefined
+      return value
+    }),
+    200,
+  )
   const showBody = createMemo(() => props.showReasoningSummaries ?? true)
 
   return (
@@ -2130,7 +2134,10 @@ ToolRegistry.register({
       return value
     })
     const running = createMemo(() => props.status === "pending" || props.status === "running")
-    const speed = createMemo(() => data.store.token_rate?.[props.sessionID ?? ""] ?? 0)
+    const speed = createDebouncedMemo(
+      createMemo(() => data.store.token_rate?.[props.sessionID ?? ""] ?? 0),
+      200,
+    )
 
     const href = createMemo(() => sessionLink(childSessionId(), location.pathname, data.sessionHref))
     const clickable = createMemo(() => !!(childSessionId() && (data.navigateToSession || href())))

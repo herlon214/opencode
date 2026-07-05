@@ -1,4 +1,5 @@
 import { createMemo, type Accessor } from "solid-js"
+import { createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { useGlobal } from "@/context/global"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
@@ -38,10 +39,13 @@ export function useSessionTabAvatarState(
     if (hasPermissions()) return false
     return serverSync.session.data.session_working(sessionId())
   })
-  const tokensPerSecond = createMemo(() => {
-    const serverSync = sync()
-    if (!serverSync) return 0
-    return serverSync.session.data.token_rate[sessionId()] ?? 0
-  })
+  const tokensPerSecond = createDebouncedMemo(
+    createMemo(() => {
+      const serverSync = sync()
+      if (!serverSync) return 0
+      return serverSync.session.data.token_rate[sessionId()] ?? 0
+    }),
+    200,
+  )
   return { unread, loading, blocked, tokensPerSecond }
 }

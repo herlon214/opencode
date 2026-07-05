@@ -17,13 +17,14 @@ import { AssistantParts, Message, MessageDivider, PART_MAPPING, type UserActions
 import { streamingDuration } from "./message-part-reasoning"
 import { Card } from "@opencode-ai/ui/card"
 import { Accordion } from "@opencode-ai/ui/accordion"
+import { AnimatedNumber } from "@opencode-ai/ui/animated-number"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { DiffChanges } from "@opencode-ai/ui/diff-changes"
 import { Icon } from "@opencode-ai/ui/icon"
 import { TextShimmer } from "@opencode-ai/ui/text-shimmer"
 import { SessionRetry } from "./session-retry"
 import { TextReveal } from "@opencode-ai/ui/text-reveal"
-import { createAutoScroll } from "@opencode-ai/ui/hooks"
+import { createAutoScroll, createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { useI18n } from "@opencode-ai/ui/context/i18n"
 import { normalize } from "./session-diff"
 
@@ -389,7 +390,10 @@ export function SessionTurn(
   })
   const assistantVisible = createMemo(() => assistantDerived().visible)
   const reasoningHeading = createMemo(() => assistantDerived().reason)
-  const reasoningTokens = createMemo(() => Math.round(assistantDerived().reasoningChars / 3))
+  const reasoningTokens = createDebouncedMemo(
+    createMemo(() => Math.round(assistantDerived().reasoningChars / 3)),
+    200,
+  )
   const showThinking = createMemo(() => {
     if (!working() || !!error()) return false
     if (status().type === "retry") return false
@@ -447,7 +451,9 @@ export function SessionTurn(
                 <div data-slot="session-turn-thinking">
                   <TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />
                   <Show when={reasoningTokens() > 0}>
-                    <span data-slot="session-turn-thinking-tokens">({reasoningTokens()} tokens)</span>
+                    <span data-slot="session-turn-thinking-tokens">
+                      (<AnimatedNumber value={reasoningTokens()} /> tokens)
+                    </span>
                   </Show>
                   <Show when={!showReasoningSummaries()}>
                     <TextReveal
