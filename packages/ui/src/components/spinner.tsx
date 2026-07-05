@@ -6,8 +6,8 @@ const squares = Array.from({ length: 16 }, (_, i) => ({
   id: i,
   x: (i % 4) * 4,
   y: Math.floor(i / 4) * 4,
-  delay: Math.random() * 1.5,
-  duration: 1 + Math.random() * 1,
+  delay: (i % 8) * 0.15,
+  duration: 1.5,
   outer: outerIndices.has(i),
   corner: cornerIndices.has(i),
 }))
