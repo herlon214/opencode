@@ -8,7 +8,7 @@ import type { DesktopMenuAction } from "@opencode-ai/app/desktop-menu"
 import type { FatalRendererError, ServerReadyData, TitlebarTheme } from "../preload/types"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
-import { getStore, removeStoreFileIfEmpty } from "./store"
+import { removeStoreFileIfEmpty, storeClear, storeDelete, storeGet, storeKeys, storeLength, storeSet } from "./store"
 import { getPinchZoomEnabled, getWindowID, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
 import type { UpdaterController } from "./updater-controller"
 import { createUpdaterSubscriptions } from "./updater-subscriptions"
@@ -78,32 +78,27 @@ export function registerIpcHandlers(deps: Deps) {
   )
   ipcMain.handle("store-get", (_event: IpcMainInvokeEvent, name: string, key: string) => {
     try {
-      const store = getStore(name)
-      const value = store.get(key)
-      if (value === undefined || value === null) return null
-      return typeof value === "string" ? value : JSON.stringify(value)
+      return storeGet(name, key)
     } catch {
       return null
     }
   })
   ipcMain.handle("store-set", (_event: IpcMainInvokeEvent, name: string, key: string, value: string) => {
-    getStore(name).set(key, value)
+    storeSet(name, key, value)
   })
   ipcMain.handle("store-delete", (_event: IpcMainInvokeEvent, name: string, key: string) => {
-    getStore(name).delete(key)
+    storeDelete(name, key)
     void removeStoreFileIfEmpty(name)
   })
   ipcMain.handle("store-clear", (_event: IpcMainInvokeEvent, name: string) => {
-    getStore(name).clear()
+    storeClear(name)
     void removeStoreFileIfEmpty(name)
   })
   ipcMain.handle("store-keys", (_event: IpcMainInvokeEvent, name: string) => {
-    const store = getStore(name)
-    return Object.keys(store.store)
+    return storeKeys(name)
   })
   ipcMain.handle("store-length", (_event: IpcMainInvokeEvent, name: string) => {
-    const store = getStore(name)
-    return Object.keys(store.store).length
+    return storeLength(name)
   })
 
   ipcMain.handle(
