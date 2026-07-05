@@ -65,13 +65,14 @@ export const ApplyPatchTool = Tool.define(
         additions: number
         deletions: number
         bom: boolean
+        external: boolean
       }> = []
 
       let totalDiff = ""
 
       for (const hunk of hunks) {
         const filePath = path.resolve(instance.directory, hunk.path)
-        yield* assertExternalDirectoryEffect(ctx, filePath)
+        const external = yield* assertExternalDirectoryEffect(ctx, filePath)
 
         switch (hunk.type) {
           case "add": {
@@ -97,6 +98,7 @@ export const ApplyPatchTool = Tool.define(
               additions,
               deletions,
               bom: next.bom,
+              external,
             })
 
             totalDiff += diff + "\n"
@@ -140,7 +142,7 @@ export const ApplyPatchTool = Tool.define(
             }
 
             const movePath = hunk.move_path ? path.resolve(instance.directory, hunk.move_path) : undefined
-            yield* assertExternalDirectoryEffect(ctx, movePath)
+            const moveExternal = yield* assertExternalDirectoryEffect(ctx, movePath)
 
             fileChanges.push({
               filePath,
@@ -152,6 +154,7 @@ export const ApplyPatchTool = Tool.define(
               additions,
               deletions,
               bom,
+              external: external || moveExternal,
             })
 
             totalDiff += diff + "\n"
@@ -182,6 +185,7 @@ export const ApplyPatchTool = Tool.define(
               additions: 0,
               deletions,
               bom: source.bom,
+              external,
             })
 
             totalDiff += deleteDiff + "\n"
@@ -202,13 +206,15 @@ export const ApplyPatchTool = Tool.define(
       }))
 
       // Check permissions if needed
-      const relativePaths = fileChanges.map((c) => path.relative(instance.worktree, c.filePath).replaceAll("\\", "/"))
+      const editPatterns = fileChanges.map((change) =>
+        (change.external ? change.filePath : path.relative(instance.worktree, change.filePath)).replaceAll("\\", "/"),
+      )
       yield* ctx.ask({
         permission: "edit",
-        patterns: relativePaths,
+        patterns: editPatterns,
         always: ["*"],
         metadata: {
-          filepath: relativePaths.join(", "),
+          filepath: editPatterns.join(", "),
           diff: totalDiff,
           files,
         },

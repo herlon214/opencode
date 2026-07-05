@@ -77,7 +77,7 @@ export function evaluate(action: string, resource: string, ...rulesets: Permissi
   return (
     rulesets
       .flat()
-      .findLast((rule) => Wildcard.match(action, rule.action) && Wildcard.match(resource, rule.resource)) ?? {
+      .findLast((rule) => Wildcard.match(action, rule.action) && Wildcard.matchPath(resource, rule.resource)) ?? {
       action,
       resource: "*",
       effect: "ask",

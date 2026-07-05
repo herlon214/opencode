@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { AgentV2 } from "@opencode-ai/core/agent"
 import { Database } from "@opencode-ai/core/database/database"
@@ -103,6 +103,21 @@ function waitForRequest() {
 }
 
 describe("PermissionV2", () => {
+  test("matches macOS private path aliases", () => {
+    if (process.platform !== "darwin") return
+
+    expect(
+      PermissionV2.evaluate("external_directory", "/private/tmp/*", [
+        { action: "external_directory", resource: "/tmp/*", effect: "allow" },
+      ]).effect,
+    ).toBe("allow")
+    expect(
+      PermissionV2.evaluate("external_directory", "/tmp/*", [
+        { action: "external_directory", resource: "/private/tmp/*", effect: "allow" },
+      ]).effect,
+    ).toBe("allow")
+  })
+
   it.effect("returns the evaluated effect and only queues prompts", () =>
     Effect.gen(function* () {
       yield* setup([{ action: "read", resource: "*", effect: "allow" }])

@@ -11,6 +11,21 @@ const it = testEffect(LayerNode.compile(Config.node))
 const load = Config.use.get()
 
 describe("Permission.evaluate for permission.task", () => {
+  test("matches macOS private path aliases for external directories", () => {
+    if (process.platform !== "darwin") return
+
+    expect(
+      Permission.evaluate("external_directory", "/private/tmp/*", [
+        { permission: "external_directory", pattern: "/tmp/*", action: "allow" },
+      ]).action,
+    ).toBe("allow")
+    expect(
+      Permission.evaluate("external_directory", "/tmp/*", [
+        { permission: "external_directory", pattern: "/private/tmp/*", action: "allow" },
+      ]).action,
+    ).toBe("allow")
+  })
+
   const createRuleset = (rules: Record<string, "allow" | "deny" | "ask">): PermissionV1.Ruleset =>
     Object.entries(rules).map(([pattern, action]) => ({
       permission: "task",

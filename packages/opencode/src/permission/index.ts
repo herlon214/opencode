@@ -29,7 +29,7 @@ export function evaluate(permission: string, pattern: string, ...rulesets: Permi
   return (
     rulesets
       .flat()
-      .findLast((rule) => Wildcard.match(permission, rule.permission) && Wildcard.match(pattern, rule.pattern)) ?? {
+      .findLast((rule) => Wildcard.match(permission, rule.permission) && Wildcard.matchPath(pattern, rule.pattern)) ?? {
       action: "ask",
       permission,
       pattern: "*",
