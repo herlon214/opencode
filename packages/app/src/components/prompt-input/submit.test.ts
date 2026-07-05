@@ -134,6 +134,18 @@ beforeAll(async () => {
     useServer: () => ({ key: "server-key" }),
   }))
 
+  mock.module("@/context/settings", () => ({
+    useSettings: () => ({
+      general: {
+        newLayoutDesigns: () => false,
+      },
+    }),
+  }))
+
+  mock.module("@/utils/session-route", () => ({
+    sessionHref: (server: string, sessionID: string) => `/server/${server}/session/${sessionID}`,
+  }))
+
   mock.module("@/context/tabs", () => ({
     useTabs: () => ({
       draft: () => ({ server: "project-server" }),

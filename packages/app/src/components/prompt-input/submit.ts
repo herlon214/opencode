@@ -13,8 +13,11 @@ import { usePermission } from "@/context/permission"
 import { type ContextItem, type ImageAttachmentPart, type Prompt, type usePrompt } from "@/context/prompt"
 import { useSDK, type DirectorySDK } from "@/context/sdk"
 import { useSync, type DirectorySync } from "@/context/sync"
+import { useSettings } from "@/context/settings"
+import { useServer } from "@/context/server"
 import { Identifier } from "@/utils/id"
 import { Worktree as WorktreeState } from "@/utils/worktree"
+import { sessionHref } from "@/utils/session-route"
 import { buildRequestParts } from "./build-request-parts"
 import { setCursorPosition } from "./editor-dom"
 import { ScopedKey } from "@/utils/server-scope"
@@ -211,6 +214,8 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const params = useParams()
   const [search] = useSearchParams<{ draftId?: string }>()
   const tabs = useTabs()
+  const settings = useSettings()
+  const server = useServer()
   const pendingKey = (sessionID: string) => ScopedKey.from(sdk().scope, sessionID)
 
   const errorMessage = (err: unknown) => {
@@ -394,6 +399,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         layout.handoff.setTabs(base64Encode(sessionDirectory), session.id)
         const draftID = search.draftId
         if (draftID) tabs.promoteDraft(draftID, { server: tabs.draft(draftID).server, sessionId: session.id })
+        else if (settings.general.newLayoutDesigns()) navigate(sessionHref(server.key, session.id))
         else navigate(`/${base64Encode(sessionDirectory)}/session/${session.id}`)
         submission.retarget(prompt.capture({ dir: base64Encode(sessionDirectory), id: session.id }))
       }
