@@ -14,8 +14,6 @@ function waveDelay(index: number) {
   return -distance * stepMs
 }
 
-// Per-dot duration so the waves drift in and out of sync — the pattern never
-// repeats exactly. Derived from the dot index so it's deterministic across renders.
 const waveDuration = (i: number) => 2400 + ((i * 53) % 960)
 
 const dots = Array.from({ length: grid * grid }, (_, index) => ({
@@ -26,8 +24,13 @@ const dots = Array.from({ length: grid * grid }, (_, index) => ({
   duration: waveDuration(index),
 }))
 
-export function SessionProgressIndicatorV2(props: ComponentProps<"svg">) {
-  const [local, rest] = splitProps(props, ["class", "classList", "width", "height"])
+export function SessionProgressIndicatorV2(props: ComponentProps<"svg"> & { speed?: number }) {
+  const [local, rest] = splitProps(props, ["class", "classList", "width", "height", "speed"])
+  const multiplier = () => {
+    const rate = local.speed ?? 0
+    if (rate <= 0) return 1
+    return Math.max(0.4, 1 - (rate - 20) / 200)
+  }
   return (
     <svg
       {...rest}
@@ -52,8 +55,8 @@ export function SessionProgressIndicatorV2(props: ComponentProps<"svg">) {
             rx={1}
             ry={1}
             style={{
-              "--_delay": `${cell.delay}ms`,
-              "--_duration": `${cell.duration}ms`,
+              "--_delay": `${cell.delay * multiplier()}ms`,
+              "--_duration": `${cell.duration * multiplier()}ms`,
             }}
           />
         )}

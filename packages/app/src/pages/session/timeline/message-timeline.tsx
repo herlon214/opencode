@@ -45,6 +45,7 @@ import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { SessionRetry } from "@opencode-ai/session-ui/session-retry"
 import { isScrollKeyTarget, scrollKey, scrollKeyOwner, ScrollView } from "@opencode-ai/ui/scroll-view"
 import { Spinner } from "@opencode-ai/ui/spinner"
+import { SessionProgressIndicatorV2 } from "@opencode-ai/session-ui/v2/session-progress-indicator-v2"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { TextReveal } from "@opencode-ai/ui/text-reveal"
@@ -1246,11 +1247,16 @@ export function MessageTimeline(props: {
     const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
     const lastTextGroup = createMemo(() => props.row().lastTextGroup)
     const canExpand = createMemo(() => active() || groupCount() > 1)
+    const speed = createMemo(() => {
+      const id = sessionID()
+      if (!id) return 0
+      return sync().data.token_rate?.[id] ?? 0
+    })
     const title = (showSummary: boolean) => (
       <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
         <Show when={active()}>
           <span data-slot="in-progress-group-spinner">
-            <Spinner class="size-4" />
+            <SessionProgressIndicatorV2 speed={speed()} />
           </span>
         </Show>
         <span data-slot="in-progress-group-label" class="shrink-0">

@@ -56,6 +56,7 @@ import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { TextShimmer } from "@opencode-ai/ui/text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
+import { AnimatedCountLabel } from "./tool-count-label"
 import { ToolStatusTitle } from "./tool-status-title"
 import { patchFiles } from "./apply-patch-file"
 import { animate } from "motion"
@@ -1838,7 +1839,6 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
 PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   const data = useData()
   const i18n = useI18n()
-  const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
   const part = () => props.part as ReasoningPart
   const streaming = createMemo(
     () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
@@ -1853,7 +1853,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   const tokenLabel = createMemo(() => {
     const value = Math.round((text()?.length ?? 0) / 3)
     if (value <= 0) return undefined
-    return i18n.t("ui.sessionTurn.thinking.tokens", { count: numfmt().format(value) })
+    return value
   })
   const showBody = createMemo(() => props.showReasoningSummaries ?? true)
 
@@ -1873,7 +1873,13 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
               <span data-slot="reasoning-part-heading">: {heading()}</span>
             </Show>
             <Show when={tokenLabel()}>
-              <span data-slot="reasoning-part-tokens">{tokenLabel()}</span>
+              <span data-slot="reasoning-part-tokens">
+                <AnimatedCountLabel
+                  count={tokenLabel()!}
+                  one={i18n.t("ui.sessionTurn.thinking.tokens")}
+                  other={i18n.t("ui.sessionTurn.thinking.tokens")}
+                />
+              </span>
             </Show>
             <Show when={durationLabel()}>
               <span data-slot="reasoning-part-duration"> · {durationLabel()}</span>
@@ -2124,6 +2130,7 @@ ToolRegistry.register({
       return value
     })
     const running = createMemo(() => props.status === "pending" || props.status === "running")
+    const speed = createMemo(() => data.store.token_rate?.[props.sessionID ?? ""] ?? 0)
 
     const href = createMemo(() => sessionLink(childSessionId(), location.pathname, data.sessionHref))
     const clickable = createMemo(() => !!(childSessionId() && (data.navigateToSession || href())))
@@ -2169,6 +2176,7 @@ ToolRegistry.register({
                 <Show when={newLayout()} fallback={<Spinner />}>
                   <SessionProgressIndicatorV2
                     style={{ color: v2Tone() ?? "light-dark(var(--v2-text-text-base), #ffffff)" }}
+                    speed={speed()}
                   />
                 </Show>
               </span>

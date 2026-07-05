@@ -148,6 +148,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
     session_working(id: string) {
       return (this.session_status[id]?.type ?? "idle") !== "idle"
     },
+    token_rate: {} as Record<string, number>,
   })
   const requests = new Map<string, Promise<Session>>()
   const inflight = new Map<string, Promise<void>>()
@@ -158,6 +159,28 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
   const pendingParts = new Map<string, Map<string, Set<string>>>()
   const orphanParts = new Map<string, Set<string>>()
   const removedMessages = new Map<string, Set<string>>()
+  const tokenRateWindows = new Map<string, { time: number; chars: number }[]>()
+  const tokenRateLastEmit = new Map<string, number>()
+  const TOKEN_RATE_WINDOW_MS = 5_000
+  const TOKEN_RATE_EMIT_MS = 250
+  const CHARS_PER_TOKEN = 4
+
+  const updateTokenRate = (sessionID: string, delta: string) => {
+    const now = Date.now()
+    const window = tokenRateWindows.get(sessionID) ?? []
+    window.push({ time: now, chars: delta.length })
+    const cutoff = now - TOKEN_RATE_WINDOW_MS
+    while (window.length > 0 && window[0].time < cutoff) window.shift()
+    tokenRateWindows.set(sessionID, window)
+    const lastEmit = tokenRateLastEmit.get(sessionID) ?? 0
+    if (now - lastEmit < TOKEN_RATE_EMIT_MS) return
+    tokenRateLastEmit.set(sessionID, now)
+    const totalChars = window.reduce((sum, entry) => sum + entry.chars, 0)
+    const elapsed = window.length > 0 ? now - window[0].time : 0
+    const rate = elapsed > 0 ? (totalChars / CHARS_PER_TOKEN) / (elapsed / 1000) : 0
+    setData("token_rate", sessionID, rate)
+  }
+
   // Tracks parts that received deltas since their last durable snapshot: the field value at the
   // first delta plus which field accumulated. The accumulated text itself is not duplicated; it is
   // always identical to the live part field, which replaceParts reads when deciding whether a
@@ -403,6 +426,8 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
       pendingParts.delete(sessionID)
       orphanParts.delete(sessionID)
       removedMessages.delete(sessionID)
+      tokenRateWindows.delete(sessionID)
+      tokenRateLastEmit.delete(sessionID)
     })
     setData(
       produce((draft) => {
@@ -872,6 +897,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
           field: string
           delta: string
         }
+        updateTokenRate(props.sessionID, props.delta)
         const parts = data.part[props.messageID]
         if (!parts) return
         const result = Binary.search(parts, props.partID, (part) => part.id)

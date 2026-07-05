@@ -88,6 +88,9 @@ export type State = {
   part_text_accum_delta: {
     [partID: string]: string
   }
+  token_rate: {
+    [sessionID: string]: number
+  }
 }
 
 export type VcsCache = {

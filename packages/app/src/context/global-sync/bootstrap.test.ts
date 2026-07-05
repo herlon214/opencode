@@ -46,6 +46,7 @@ function directoryState() {
     message: {},
     part: {},
     part_text_accum_delta: {},
+    token_rate: {},
   })
 }
 

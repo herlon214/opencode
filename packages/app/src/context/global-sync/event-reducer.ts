@@ -91,6 +91,7 @@ export function cleanupDroppedSessionCaches(
       ...Object.keys(store.permission),
       ...Object.keys(store.question),
       ...Object.keys(store.session_status),
+      ...Object.keys(store.token_rate),
       ...Object.values(store.part)
         .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
         .filter((sessionID): sessionID is string => !!sessionID),

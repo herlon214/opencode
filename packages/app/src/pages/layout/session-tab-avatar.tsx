@@ -33,6 +33,7 @@ export function SessionTabAvatar(props: {
       <span class="relative block size-4 shrink-0">
         <SessionProgressIndicatorV2
           class={`absolute inset-0 ${props.revealProjectOnHover === false ? "" : "group-hover:invisible"}`}
+          speed={state.tokensPerSecond()}
         />
         <Show when={props.revealProjectOnHover !== false}>
           <span class="invisible absolute inset-0 group-hover:visible">{projectAvatar()}</span>

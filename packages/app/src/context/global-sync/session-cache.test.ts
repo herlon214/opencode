@@ -41,6 +41,7 @@ describe("app session cache", () => {
       question: Record<string, QuestionRequest[] | undefined>
       block_start: Record<string, number | undefined>
       part_text_accum_delta: Record<string, string | undefined>
+      token_rate: Record<string, number | undefined>
     } = {
       session_status: { ses_1: { type: "busy" } as SessionStatus },
       session_diff: { ses_1: [] },
@@ -51,6 +52,7 @@ describe("app session cache", () => {
       question: { ses_1: [] as QuestionRequest[] },
       block_start: {},
       part_text_accum_delta: { prt_1: "streamed text" },
+      token_rate: {},
     }
 
     dropSessionCaches(store, ["ses_1"])
@@ -77,6 +79,7 @@ describe("app session cache", () => {
       question: Record<string, QuestionRequest[] | undefined>
       block_start: Record<string, number | undefined>
       part_text_accum_delta: Record<string, string | undefined>
+      token_rate: Record<string, number | undefined>
     } = {
       session_status: {},
       session_diff: {},
@@ -87,6 +90,7 @@ describe("app session cache", () => {
       question: {},
       block_start: {},
       part_text_accum_delta: {},
+      token_rate: {},
     }
 
     dropSessionCaches(store, ["ses_1"])

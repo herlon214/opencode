@@ -38,5 +38,10 @@ export function useSessionTabAvatarState(
     if (hasPermissions()) return false
     return serverSync.session.data.session_working(sessionId())
   })
-  return { unread, loading, blocked }
+  const tokensPerSecond = createMemo(() => {
+    const serverSync = sync()
+    if (!serverSync) return 0
+    return serverSync.session.data.token_rate[sessionId()] ?? 0
+  })
+  return { unread, loading, blocked, tokensPerSecond }
 }

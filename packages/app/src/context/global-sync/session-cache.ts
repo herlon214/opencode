@@ -20,6 +20,7 @@ type SessionCache = {
   question: Record<string, QuestionRequest[] | undefined>
   block_start: Record<string, number | undefined>
   part_text_accum_delta: Record<string, string | undefined>
+  token_rate: Record<string, number | undefined>
 }
 
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {
@@ -43,6 +44,7 @@ export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<stri
     delete store.permission[sessionID]
     delete store.question[sessionID]
     delete store.block_start[sessionID]
+    delete store.token_rate[sessionID]
   }
 }
 
