@@ -619,7 +619,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const renderEditorWithCursor = (parts: Prompt) => {
     const cursor = currentCursor()
+    const wasFocused = document.activeElement === editorRef
     renderEditor(parts)
+    if (wasFocused) editorRef.focus()
     if (cursor !== null) setCursorPosition(editorRef, cursor)
   }
 
@@ -637,11 +639,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
 
   const handleBlur = (event: FocusEvent) => {
-    // During streaming, diff re-renders can detach/reattach the editor,
-    // causing an involuntary blur→focus cycle. Detect this (no relatedTarget
-    // and no recent pointer interaction) so handleFocus restores the cursor.
     const involuntary = event.relatedTarget === null && performance.now() - lastPointerDown > 100
-    if (!involuntary) savedCursor = currentCursor()
+    savedCursor = currentCursor()
     if (involuntary) {
       restoreOnFocus = true
     }
