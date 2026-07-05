@@ -1,24 +1,25 @@
 [data-component="session-progress-indicator-v2"] {
-  --_duration: 1200ms;
   display: block;
   flex-shrink: 0;
   color: var(--v2-icon-icon-muted, #808080);
+}
+
+[data-component="session-progress-indicator-v2"] [data-dot="0"],
+[data-component="session-progress-indicator-v2"] [data-dot="4"],
+[data-component="session-progress-indicator-v2"] [data-dot="20"],
+[data-component="session-progress-indicator-v2"] [data-dot="24"] {
+  display: none;
 }
 
 [data-component="session-progress-indicator-v2"] [data-dot] {
   fill: currentColor;
   opacity: 0.2;
   animation-name: session-progress-indicator-v2-wave;
-  animation-duration: var(--_duration);
+  animation-duration: var(--_duration, 1200ms);
   animation-timing-function: ease-out;
   animation-iteration-count: infinite;
   animation-fill-mode: both;
   animation-delay: var(--_delay, 0ms);
-}
-
-[data-component="session-progress-indicator-v2"] [data-dot="12"] {
-  animation: none;
-  opacity: 1;
 }
 
 @keyframes session-progress-indicator-v2-wave {
@@ -40,9 +41,5 @@
 @media (prefers-reduced-motion: reduce) {
   [data-component="session-progress-indicator-v2"] [data-dot] {
     animation: none;
-  }
-
-  [data-component="session-progress-indicator-v2"] [data-dot="12"] {
-    opacity: 1;
   }
 }

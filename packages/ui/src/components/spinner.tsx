@@ -2,6 +2,10 @@ import { ComponentProps, For } from "solid-js"
 
 const outerIndices = new Set([1, 2, 4, 7, 8, 11, 13, 14])
 const cornerIndices = new Set([0, 3, 12, 15])
+// Stable per-dot phase so the dim field shimmers organically instead of pulsing
+// in lockstep by column. Derived from the dot id so it's deterministic across renders.
+const phaseDelay = (i: number) => ((i * 137) % 150) / 100 - 0.75
+const phaseDuration = (i: number) => 1.5 + ((i * 53) % 90) / 100
 const squares = Array.from({ length: 16 }, (_, i) => ({
   id: i,
   x: (i % 4) * 4,
@@ -10,6 +14,8 @@ const squares = Array.from({ length: 16 }, (_, i) => ({
   duration: 1.5,
   outer: outerIndices.has(i),
   corner: cornerIndices.has(i),
+  phaseDelay: phaseDelay(i),
+  phaseDuration: phaseDuration(i),
 }))
 
 export function Spinner(props: {
@@ -40,9 +46,8 @@ export function Spinner(props: {
               opacity: square.corner ? 0 : undefined,
               animation: square.corner
                 ? undefined
-                : `${square.outer ? "pulse-opacity-dim" : "pulse-opacity"} ${square.duration}s ease-in-out infinite`,
+                : `${square.outer ? "pulse-opacity-dim" : "pulse-opacity"} ${square.phaseDuration}s ease-in-out ${square.phaseDelay}s infinite`,
               "animation-fill-mode": square.corner ? undefined : "both",
-              "animation-delay": square.corner ? undefined : `${square.delay}s`,
             }}
           />
         )}
