@@ -4,13 +4,6 @@
   color: var(--v2-icon-icon-muted, #808080);
 }
 
-[data-component="session-progress-indicator-v2"] [data-dot="0"],
-[data-component="session-progress-indicator-v2"] [data-dot="4"],
-[data-component="session-progress-indicator-v2"] [data-dot="20"],
-[data-component="session-progress-indicator-v2"] [data-dot="24"] {
-  display: none;
-}
-
 [data-component="session-progress-indicator-v2"] [data-dot] {
   fill: currentColor;
   opacity: 0.2;

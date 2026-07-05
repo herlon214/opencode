@@ -16,13 +16,14 @@ function waveDelay(index: number) {
 
 const waveDuration = (i: number) => 2400 + ((i * 53) % 960)
 
+const corners = new Set([0, 4, 20, 24])
 const dots = Array.from({ length: grid * grid }, (_, index) => ({
   index,
   x: origin + (index % grid) * (dot + gap),
   y: origin + Math.floor(index / grid) * (dot + gap),
   delay: waveDelay(index),
   duration: waveDuration(index),
-}))
+})).filter((cell) => !corners.has(cell.index))
 
 export function SessionProgressIndicatorV2(props: ComponentProps<"svg"> & { speed?: number }) {
   const [local, rest] = splitProps(props, ["class", "classList", "width", "height", "speed"])
