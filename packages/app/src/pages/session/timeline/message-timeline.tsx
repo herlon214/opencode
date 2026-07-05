@@ -1162,6 +1162,11 @@ export function MessageTimeline(props: {
     const focus = settings.general.focusMode
     const [open, setOpen] = createSignal(!focus() && active())
     const groupCount = createMemo(() => props.row().groups.length)
+    const fileChanges = createMemo(() => {
+      const id = sessionID()
+      if (!id) return []
+      return sync().data.session_diff[id] ?? []
+    })
     const durationLabel = createMemo(() => {
       const ms = turnDurationMs(props.row().userMessageID)
       return ms === undefined ? undefined : formatDuration(ms)
@@ -1263,6 +1268,18 @@ export function MessageTimeline(props: {
               </span>
             </>
           )}
+        </Show>
+        <Show when={active() && fileChanges().length > 0}>
+          <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
+            ·
+          </span>
+          <span
+            data-slot="in-progress-group-files"
+            class="shrink-0 font-normal text-text-weak tabular-nums"
+          >
+            {fileChanges().length} {language.t(fileChanges().length === 1 ? "ui.common.file.one" : "ui.common.file.other")}
+          </span>
+          <DiffChanges class="shrink-0" changes={fileChanges()} />
         </Show>
         <Show when={showSummary}>
           <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
