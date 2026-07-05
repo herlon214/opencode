@@ -31,6 +31,7 @@ export namespace TimelineRow {
     previousAssistantPart: boolean
     active: boolean
     lastThoughtHeading?: string
+    lastTextHeading?: string
   }> {}
   export class Thinking extends Data.TaggedClass("Thinking")<{
     userMessageID: string

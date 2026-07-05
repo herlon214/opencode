@@ -1236,7 +1236,9 @@ export function MessageTimeline(props: {
     const stepCount = createMemo(
       () => `${groupCount()} ${language.t(groupCount() === 1 ? "ui.common.step.one" : "ui.common.step.other")}`,
     )
-    const heading = createMemo(() => (!open() ? props.row().lastThoughtHeading : undefined))
+    const heading = createMemo(() =>
+      !open() ? (props.row().lastTextHeading ?? props.row().lastThoughtHeading) : undefined,
+    )
     const canExpand = createMemo(() => active() || groupCount() > 1)
     const title = (showSummary: boolean) => (
       <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">

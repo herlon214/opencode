@@ -14,6 +14,12 @@ export function reasoningHeading(text: string): string | undefined {
   )
 }
 
+export function textHeading(text: string): string | undefined {
+  const firstLine = text.replace(/\r\n?/g, "\n").split("\n").find((line) => line.trim())
+  if (!firstLine) return undefined
+  return cleanHeading(firstLine)
+}
+
 function matchHeading(markdown: string, pattern: RegExp): string | undefined {
   const match = markdown.match(pattern)
   if (!match?.[1]) return

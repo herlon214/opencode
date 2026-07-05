@@ -1,7 +1,7 @@
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { AssistantMessage, Part, SessionStatus, SnapshotFileDiff, UserMessage } from "@opencode-ai/sdk/v2"
 import { groupParts, renderable, type PartGroup } from "@opencode-ai/session-ui/message-part"
-import { reasoningHeading } from "@opencode-ai/session-ui/message-part-reasoning"
+import { reasoningHeading, textHeading } from "@opencode-ai/session-ui/message-part-reasoning"
 import { TimelineRow, type SummaryDiff } from "./timeline-row"
 
 export { TimelineRow, type SummaryDiff } from "./timeline-row"
@@ -31,6 +31,7 @@ export type TimelineRowMap = {
     previousAssistantPart: boolean
     active: boolean
     lastThoughtHeading?: string
+    lastTextHeading?: string
   }
   Thinking: { userMessageID: string; reasoningHeading?: string; reasoningTokens: number }
   Retry: { userMessageID: string }
@@ -267,16 +268,18 @@ export namespace Timeline {
     return -1
   }
 
-  function lastReasoningHeading(
+  function lastHeading(
     segment: { type: "part"; group: PartGroup }[],
     partByID: Map<string, Part>,
+    partType: "reasoning" | "text",
+    extract: (text: string) => string | undefined,
   ): string | undefined {
     for (let i = segment.length - 1; i >= 0; i--) {
       const group = segment[i]!.group
       if (group.type !== "part") continue
       const part = partByID.get(group.ref.partID)
-      if (part?.type !== "reasoning") continue
-      const heading = reasoningHeading(part.text ?? "")
+      if (part?.type !== partType) continue
+      const heading = extract(part.text ?? "")
       if (heading) return heading
     }
     return undefined
@@ -304,7 +307,8 @@ export namespace Timeline {
         groups: segment,
         previousAssistantPart: assistantGroupIndex > 0,
         active: opts.isActive && opts.status === "busy" && !opts.error,
-        lastThoughtHeading: opts.hasFinalFollowing ? undefined : lastReasoningHeading(segment, partByID),
+        lastThoughtHeading: opts.hasFinalFollowing ? undefined : lastHeading(segment, partByID, "reasoning", reasoningHeading),
+        lastTextHeading: opts.hasFinalFollowing ? undefined : lastHeading(segment, partByID, "text", textHeading),
       }),
     )
   }
