@@ -1763,7 +1763,7 @@ export default function Page() {
     setFollowup("editing", draft.sessionID, undefined)
   }
 
-  const queueCommand = (commandId: string, title: string) => {
+  const queueCommand = (commandId: string | undefined, title: string) => {
     const sessionID = params.id
     if (!sessionID) return
     const currentModel = local.model.current()

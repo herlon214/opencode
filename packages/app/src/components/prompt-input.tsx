@@ -173,7 +173,7 @@ export interface PromptInputProps {
   onEditLoaded?: () => void
   shouldQueue?: () => boolean
   onQueue?: (draft: FollowupDraft) => void
-  onQueueCommand?: (commandId: string, title: string) => void
+  onQueueCommand?: (commandId: string | undefined, title: string) => void
   onAbort?: () => void
   onSubmit?: () => void
   toolbar?: JSX.Element
@@ -819,18 +819,20 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     closePopover()
     const images = imageAttachments()
 
+    if (options?.queue && working() && props.onQueueCommand) {
+      const commandId = cmd.type === "custom" ? undefined : cmd.id
+      const title = cmd.type === "custom" ? `/${cmd.trigger}` : cmd.title
+      props.onQueueCommand(commandId, title)
+      clearEditor()
+      prompt.set([...DEFAULT_PROMPT, ...images], 0)
+      return
+    }
+
     if (cmd.type === "custom") {
       const text = `/${cmd.trigger} `
       setEditorText(text)
       prompt.set([{ type: "text", content: text, start: 0, end: text.length }, ...images], text.length)
       focusEditorEnd()
-      return
-    }
-
-    if (options?.queue && working() && props.onQueueCommand) {
-      props.onQueueCommand(cmd.id, cmd.title)
-      clearEditor()
-      prompt.set([...DEFAULT_PROMPT, ...images], 0)
       return
     }
 
