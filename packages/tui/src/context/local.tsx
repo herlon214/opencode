@@ -258,6 +258,17 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         )
       })
 
+      function setScopedModel(model: { providerID: string; modelID: string }) {
+        const a = agent.current()
+        if (!a) return
+        const sessionID = currentSessionID()
+        if (sessionID) {
+          setModelStore("session", sessionID, "model", { ...model })
+        } else {
+          setModelStore("model", a.name, { ...model })
+        }
+      }
+
       return {
         current: currentModel,
         get ready() {
@@ -297,14 +308,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (next >= recent.length) next = 0
           const val = recent[next]
           if (!val) return
-          const a = agent.current()
-          if (!a) return
-          const sessionID = currentSessionID()
-          if (sessionID) {
-            setModelStore("session", sessionID, "model", { ...val })
-          } else {
-            setModelStore("model", a.name, { ...val })
-          }
+          setScopedModel(val)
         },
         cycleFavorite(direction: 1 | -1) {
           const favorites = modelStore.favorite.filter((item) => isModelValid(item))
@@ -330,14 +334,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
           const next = favorites[index]
           if (!next) return
-          const a = agent.current()
-          if (!a) return
-          const sessionID = currentSessionID()
-          if (sessionID) {
-            setModelStore("session", sessionID, "model", { ...next })
-          } else {
-            setModelStore("model", a.name, { ...next })
-          }
+          setScopedModel(next)
           setModelStore("recent", recentModels(next, modelStore.recent))
           save()
         },
@@ -351,14 +348,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
               })
               return
             }
-            const a = agent.current()
-            if (!a) return
-            const sessionID = currentSessionID()
-            if (sessionID) {
-              setModelStore("session", sessionID, "model", model)
-            } else {
-              setModelStore("model", a.name, model)
-            }
+            setScopedModel(model)
             if (options?.recent) {
               setModelStore("recent", recentModels(model, modelStore.recent))
               save()
