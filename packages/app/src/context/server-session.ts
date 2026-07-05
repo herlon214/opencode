@@ -141,6 +141,9 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
     block_start: {} as Record<string, number | undefined>,
     message: {} as Record<string, Message[]>,
     part: {} as Record<string, Part[]>,
+    // Always empty; retained so consumers sharing the store shape (session-ui data context,
+    // directory-sync facade) keep working. Delta preservation state lives in deltaBases, and the
+    // accumulated text is the live part field itself.
     part_text_accum_delta: {} as Record<string, string>,
     session_working(id: string) {
       return (this.session_status[id]?.type ?? "idle") !== "idle"
@@ -155,13 +158,13 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
   const pendingParts = new Map<string, Map<string, Set<string>>>()
   const orphanParts = new Map<string, Set<string>>()
   const removedMessages = new Map<string, Set<string>>()
-  const deltaBases = new Map<string, { base: string; sessionID: string }>()
-  const deleteMessageParts = (
-    cache: { part: Record<string, Part[] | undefined>; part_text_accum_delta: Record<string, string | undefined> },
-    messageID: string,
-  ) => {
+  // Tracks parts that received deltas since their last durable snapshot: the field value at the
+  // first delta plus which field accumulated. The accumulated text itself is not duplicated; it is
+  // always identical to the live part field, which replaceParts reads when deciding whether a
+  // fetched snapshot may replace locally accumulated text.
+  const deltaBases = new Map<string, { base: string; sessionID: string; field: string }>()
+  const deleteMessageParts = (cache: { part: Record<string, Part[] | undefined> }, messageID: string) => {
     for (const part of cache.part[messageID] ?? []) {
-      delete cache.part_text_accum_delta[part.id]
       deltaBases.delete(part.id)
     }
     delete cache.part[messageID]
@@ -439,10 +442,14 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         .map(([sessionID]) => sessionID),
     ])
 
-  const touch = (sessionID: string) =>
+  const touch = (sessionID: string) => {
+    // preserve is a thunk: pickSessionCacheEvictions only invokes it when something will
+    // actually be evicted, keeping the map-scanning protectedSessions() off the per-event
+    // hot path.
     evict(
-      pickSessionCacheEvictions({ seen, keep: sessionID, limit: SESSION_CACHE_LIMIT, preserve: protectedSessions() }),
+      pickSessionCacheEvictions({ seen, keep: sessionID, limit: SESSION_CACHE_LIMIT, preserve: protectedSessions }),
     )
+  }
 
   const fetchMessages = async (sessionID: string, limit: number, before?: string, onAttempt?: () => void) => {
     const response = await (options?.retry ?? retry)(() => {
@@ -487,17 +494,26 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
       const fetchedIDs = new Set(fetched.map((part) => part.id))
       const pending = pendingParts.get(sessionID)?.get(item.id)
       const touched = new Set([...(load?.touchedParts.get(item.id) ?? []), ...(pending ?? [])])
+      const live = data.part[item.id]
       for (const part of fetched) {
-        const accumulated = data.part_text_accum_delta[part.id]
-        const base = deltaBases.get(part.id)?.base
+        const deltaBase = deltaBases.get(part.id)
+        const accumulated = (() => {
+          if (!deltaBase || !live) return undefined
+          const result = Binary.search(live, part.id, (value) => value.id)
+          if (!result.found) return undefined
+          const value = live[result.index]?.[deltaBase.field as keyof Part]
+          return typeof value === "string" ? value : undefined
+        })()
+        // Compare the same field the delta accumulates into; deltas are not
+        // limited to `text` (the SDK types `field` as an open string).
+        const fetchedValue = deltaBase ? part[deltaBase.field as keyof Part] : undefined
         const preserveDelta =
-          base !== undefined &&
+          deltaBase !== undefined &&
           accumulated !== undefined &&
-          "text" in part &&
-          typeof part.text === "string" &&
-          part.text.startsWith(base) &&
-          accumulated.startsWith(part.text) &&
-          accumulated !== part.text
+          typeof fetchedValue === "string" &&
+          fetchedValue.startsWith(deltaBase.base) &&
+          accumulated.startsWith(fetchedValue) &&
+          accumulated !== fetchedValue
         if (preserveDelta) touched.add(part.id)
         if (load?.carriedDeltaParts.get(item.id)?.has(part.id) && !preserveDelta) touched.delete(part.id)
       }
@@ -511,17 +527,9 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         continue
       }
       const partIDs = new Set(parts.map((part) => part.id))
-      setData(
-        "part_text_accum_delta",
-        produce((draft) => {
-          for (const part of data.part[item.id] ?? []) {
-            if (!partIDs.has(part.id) || !touched.has(part.id)) {
-              delete draft[part.id]
-              deltaBases.delete(part.id)
-            }
-          }
-        }),
-      )
+      for (const part of data.part[item.id] ?? []) {
+        if (!partIDs.has(part.id) || !touched.has(part.id)) deltaBases.delete(part.id)
+      }
       setData("part", item.id, reconcile(parts, { key: "id" }))
       orphanParts.get(sessionID)?.delete(item.id)
     }
@@ -804,10 +812,6 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         deltaBases.delete(part.id)
         trackPartChange(part.sessionID, part.messageID, part.id)
         confirmOptimisticPart(part.sessionID, part.messageID, part)
-        setData(
-          "part_text_accum_delta",
-          produce((draft) => void delete draft[part.id]),
-        )
         const parts = data.part[part.messageID]
         if (!parts) {
           setData("part", part.messageID, [part])
@@ -850,7 +854,6 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         clearOptimisticPart(props.sessionID, props.messageID, props.partID)
         setData(
           produce((draft) => {
-            delete draft.part_text_accum_delta[props.partID]
             deltaBases.delete(props.partID)
             const parts = draft.part[props.messageID]
             if (!parts) return
@@ -886,12 +889,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         const field = props.field as keyof (typeof parts)[number]
         const current = parts[result.index]?.[field]
         if (!deltaBases.has(props.partID) && typeof current === "string")
-          deltaBases.set(props.partID, { base: current, sessionID: props.sessionID })
-        setData(
-          "part_text_accum_delta",
-          props.partID,
-          (value) => (value ?? (typeof current === "string" ? current : "")) + props.delta,
-        )
+          deltaBases.set(props.partID, { base: current, sessionID: props.sessionID, field: props.field })
         setData(
           "part",
           props.messageID,
@@ -1029,15 +1027,9 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
         if (!items)
           optimistic.set(input.sessionID, new Map([[input.message.id, { ...input, parts, confirmedParts: [] }]]))
         setData("message", input.sessionID, (messages = []) => merge(messages, [input.message]))
-        setData(
-          "part_text_accum_delta",
-          produce((draft) => {
-            for (const part of [...(data.part[input.message.id] ?? []), ...parts]) {
-              delete draft[part.id]
-              deltaBases.delete(part.id)
-            }
-          }),
-        )
+        for (const part of [...(data.part[input.message.id] ?? []), ...parts]) {
+          deltaBases.delete(part.id)
+        }
         setData("part", input.message.id, parts)
       },
       remove(input: { sessionID: string; messageID: string }) {
@@ -1050,7 +1042,6 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
           setData(
             produce((draft) => {
               for (const part of item.parts) {
-                delete draft.part_text_accum_delta[part.id]
                 deltaBases.delete(part.id)
               }
               const parts = draft.part[input.messageID]

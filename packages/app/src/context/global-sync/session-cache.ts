@@ -50,12 +50,16 @@ export function pickSessionCacheEvictions(input: {
   seen: Set<string>
   keep: string
   limit: number
-  preserve?: Iterable<string>
+  // A thunk is only invoked once eviction is certain, so callers can pass an
+  // expensive preserve-set computation without paying for it on every call.
+  preserve?: Iterable<string> | (() => Iterable<string> | undefined)
 }) {
   const stale: string[] = []
-  const keep = new Set([input.keep, ...Array.from(input.preserve ?? [])])
   if (input.seen.has(input.keep)) input.seen.delete(input.keep)
   input.seen.add(input.keep)
+  if (input.seen.size <= input.limit) return stale
+  const preserve = typeof input.preserve === "function" ? input.preserve() : input.preserve
+  const keep = new Set([input.keep, ...Array.from(preserve ?? [])])
   for (const id of input.seen) {
     if (input.seen.size - stale.length <= input.limit) break
     if (keep.has(id)) continue

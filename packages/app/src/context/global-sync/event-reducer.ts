@@ -83,18 +83,20 @@ export function cleanupDroppedSessionCaches(
   setSessionTodo?: (sessionID: string, todos: Todo[] | undefined) => void,
 ) {
   const keep = new Set(next.map((item) => item.id))
-  const stale = [
-    ...Object.keys(store.message),
-    ...Object.keys(store.session_diff),
-    ...Object.keys(store.todo),
-    ...Object.keys(store.permission),
-    ...Object.keys(store.question),
-    ...Object.keys(store.session_status),
-    ...Object.values(store.part)
-      .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
-      .filter((sessionID): sessionID is string => !!sessionID),
-  ].filter((sessionID, index, list) => !keep.has(sessionID) && list.indexOf(sessionID) === index)
-  if (stale.length === 0) return
+  const stale = new Set(
+    [
+      ...Object.keys(store.message),
+      ...Object.keys(store.session_diff),
+      ...Object.keys(store.todo),
+      ...Object.keys(store.permission),
+      ...Object.keys(store.question),
+      ...Object.keys(store.session_status),
+      ...Object.values(store.part)
+        .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
+        .filter((sessionID): sessionID is string => !!sessionID),
+    ].filter((sessionID) => !keep.has(sessionID)),
+  )
+  if (stale.size === 0) return
   for (const sessionID of stale) {
     setSessionTodo?.(sessionID, undefined)
   }
@@ -233,12 +235,6 @@ export function applyDirectoryEvent(input: {
             const result = Binary.search(messages, props.messageID, (m) => m.id)
             if (result.found) messages.splice(result.index, 1)
           }
-          const parts = draft.part[props.messageID]
-          if (parts) {
-            for (const part of parts) {
-              delete draft.part_text_accum_delta[part.id]
-            }
-          }
           delete draft.part[props.messageID]
         }),
       )
@@ -247,11 +243,6 @@ export function applyDirectoryEvent(input: {
     case "message.part.updated": {
       const part = (event.properties as { part: Part }).part
       if (SKIP_PARTS.has(part.type)) break
-      input.setStore(
-        produce((draft) => {
-          delete draft.part_text_accum_delta[part.id]
-        }),
-      )
       const parts = input.store.part[part.messageID]
       if (!parts) {
         input.setStore("part", part.messageID, [part])
@@ -273,11 +264,6 @@ export function applyDirectoryEvent(input: {
     }
     case "message.part.removed": {
       const props = event.properties as { messageID: string; partID: string }
-      input.setStore(
-        produce((draft) => {
-          delete draft.part_text_accum_delta[props.partID]
-        }),
-      )
       const parts = input.store.part[props.messageID]
       if (!parts) break
       const result = Binary.search(parts, props.partID, (p) => p.id)
@@ -301,13 +287,6 @@ export function applyDirectoryEvent(input: {
       if (!parts) break
       const result = Binary.search(parts, props.partID, (p) => p.id)
       if (!result.found) break
-      const field = props.field as keyof (typeof parts)[number]
-      const current = parts[result.index]?.[field]
-      input.setStore(
-        "part_text_accum_delta",
-        props.partID,
-        (existing) => (existing ?? (typeof current === "string" ? current : "")) + props.delta,
-      )
       input.setStore(
         "part",
         props.messageID,

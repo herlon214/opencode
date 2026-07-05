@@ -520,7 +520,11 @@ describe("server session", () => {
     const message = userMessage("message")
     const part = textPart(message.id, { text: "stale" })
     const store = createServerSession(
-      messageClient(response([{ info: message, parts: [part] }]), response([{ info: message, parts: [{ ...part }] }])),
+      messageClient(
+        response([{ info: message, parts: [part] }]),
+        response([{ info: message, parts: [{ ...part }] }]),
+        response([{ info: message, parts: [{ ...part }] }]),
+      ),
     )
     await store.sync("child")
     store.apply({
@@ -531,7 +535,11 @@ describe("server session", () => {
     await store.sync("child", { force: true })
 
     expect(store.data.part[message.id]).toEqual([{ ...part, text: "stale delta" }])
-    expect(store.data.part_text_accum_delta[part.id]).toBe("stale delta")
+
+    // The preservation state survives the refresh so a later stale fetch still cannot clobber it.
+    await store.sync("child", { force: true })
+
+    expect(store.data.part[message.id]).toEqual([{ ...part, text: "stale delta" }])
   })
 
   test("accepts fetched text that intentionally replaces an accumulated prefix", async () => {
@@ -558,7 +566,11 @@ describe("server session", () => {
     const part = textPart(message.id, { text: "a" })
     const fetched = { ...part, text: "ab" }
     const store = createServerSession(
-      messageClient(response([{ info: message, parts: [part] }]), response([{ info: message, parts: [fetched] }])),
+      messageClient(
+        response([{ info: message, parts: [part] }]),
+        response([{ info: message, parts: [fetched] }]),
+        response([{ info: message, parts: [{ ...fetched }] }]),
+      ),
     )
     await store.sync("child")
     store.apply({
@@ -569,7 +581,11 @@ describe("server session", () => {
     await store.sync("child", { force: true })
 
     expect(store.data.part[message.id]).toEqual([{ ...part, text: "abc" }])
-    expect(store.data.part_text_accum_delta[part.id]).toBe("abc")
+
+    // The preservation state survives the refresh so another partial catch-up keeps the suffix.
+    await store.sync("child", { force: true })
+
+    expect(store.data.part[message.id]).toEqual([{ ...part, text: "abc" }])
   })
 
   test("clears delta state after exact server catch-up", async () => {
