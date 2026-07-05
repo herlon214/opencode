@@ -36,7 +36,7 @@ describe("HttpApi error middleware", () => {
     }),
   )
 
-  it.live("returns a safe body for named defects", () =>
+  it.live("surfaces the real message for named defects", () =>
     Effect.gen(function* () {
       yield* HttpRouter.add(
         "GET",
@@ -48,8 +48,10 @@ describe("HttpApi error middleware", () => {
       const body = yield* response.json
 
       expect(response.status).toBe(500)
-      expectUnknownErrorBody(body)
-      expect(JSON.stringify(body)).not.toContain("secret named marker")
+      expect(body).toMatchObject({
+        name: "UnknownError",
+        data: { message: "secret named marker" },
+      })
     }),
   )
 

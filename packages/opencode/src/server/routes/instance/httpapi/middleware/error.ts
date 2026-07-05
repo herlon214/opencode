@@ -27,6 +27,14 @@ export const errorLayer = HttpRouter.middleware<{ handles: unknown }>()((effect)
 
       const ref = `err_${crypto.randomUUID().slice(0, 8)}`
 
+      // Surface the real message for thrown NamedError defects (e.g. "Agent not found: ...")
+      // so clients can act on it instead of seeing a generic "Unexpected server error".
+      if (error instanceof NamedError) {
+        return Effect.logError("failed", { ref, error, cause: Cause.pretty(cause) }).pipe(
+          Effect.as(HttpServerResponse.jsonUnsafe(error.toObject(), { status: 500 })),
+        )
+      }
+
       return Effect.logError("failed", { ref, error, cause: Cause.pretty(cause) }).pipe(
         Effect.as(
           HttpServerResponse.jsonUnsafe(
