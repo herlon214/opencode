@@ -9,10 +9,13 @@ import { useLocal } from "@/context/local"
 import { usePermission } from "@/context/permission"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
+import { useServerSDK } from "@/context/server-sdk"
 import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
 import { showToast } from "@/utils/toast"
+import { toaster } from "@opencode-ai/ui/toast"
+import { formatServerError } from "@/utils/server-errors"
 import { findLast } from "@opencode-ai/core/util/array"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { extractPromptFromParts } from "@/utils/prompt"
@@ -45,6 +48,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const permission = usePermission()
   const prompt = usePrompt()
   const sdk = useSDK()
+  const serverSDK = useServerSDK()
   const settings = useSettings()
   const sync = useSync()
   const terminal = useTerminal()
@@ -138,6 +142,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const terminalCommand = withCategory(language.t("command.category.terminal"))
   const mcpCommand = withCategory(language.t("command.category.mcp"))
   const permissionsCommand = withCategory(language.t("command.category.permissions"))
+  const configCommand = withCategory(language.t("command.category.settings"))
 
   const isAutoAcceptActive = () => {
     const sessionID = params.id
@@ -626,6 +631,41 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
+  const reloadConfig = async () => {
+    const pending = showToast({
+      title: language.t("command.config.reload"),
+      description: language.t("command.config.reload.description"),
+    })
+    const dismiss = () => toaster.dismiss(pending)
+    await serverSDK()
+      .client.global.dispose()
+      .then(() =>
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("command.config.reload"),
+          description: language.t("toast.config.reload.success.description"),
+        }),
+      )
+      .catch((err: unknown) =>
+        showToast({
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: formatServerError(err, language.t),
+        }),
+      )
+      .finally(dismiss)
+  }
+
+  const configCmds = () => [
+    configCommand({
+      id: "config.reload",
+      title: language.t("command.config.reload"),
+      description: language.t("command.config.reload.description"),
+      onSelect: reloadConfig,
+    }),
+  ]
+
   command.register("session", () => [
     ...sessionCmds(),
     ...shareCmds(),
@@ -636,5 +676,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     ...messageCmds(),
     ...mcpCmds(),
     ...permissionsCmds(),
+    ...configCmds(),
   ])
 }
