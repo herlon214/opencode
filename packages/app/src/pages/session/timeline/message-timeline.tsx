@@ -1163,9 +1163,8 @@ export function MessageTimeline(props: {
     const [open, setOpen] = createSignal(!focus() && active())
     const groupCount = createMemo(() => props.row().groups.length)
     const fileChanges = createMemo(() => {
-      const id = sessionID()
-      if (!id) return []
-      return sync().data.session_diff[id] ?? []
+      const summary = messageByID().get(props.row().userMessageID)?.summary
+      return summary && typeof summary !== "boolean" ? summary.diffs ?? [] : []
     })
     const durationLabel = createMemo(() => {
       const ms = turnDurationMs(props.row().userMessageID)
