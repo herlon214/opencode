@@ -495,3 +495,19 @@
     --v2-illustration-illustration-layer-03: var(--v2-grey-700);
   }
 }
+
+/* Shared type rendering for v2 components; component stylesheets rely on this
+   single rule (inherited by their children) instead of repeating it. */
+[data-component="accordion-v2"],
+[data-component="button-v2"],
+[data-component="icon-button-v2"],
+[data-component="keybind-v2"],
+[data-component="line-comment-v2"],
+[data-component="menu-v2-content"],
+[data-component="menu-v2-item"],
+[data-component="tabs-v2"],
+[data-component="text-shimmer-v2"] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}

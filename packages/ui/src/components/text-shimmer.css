@@ -62,7 +62,6 @@
   animation-timing-function: linear;
   animation-fill-mode: both;
   animation-delay: calc(var(--text-shimmer-step) * var(--text-shimmer-index) * -1);
-  will-change: background-position;
 }
 
 @keyframes text-shimmer-sweep {

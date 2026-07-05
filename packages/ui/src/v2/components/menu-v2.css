@@ -19,10 +19,6 @@
 
   outline: none;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
-
   transform-origin: var(--kb-menu-content-transform-origin);
   animation: menu-v2-in 120ms ease-out;
 
@@ -40,10 +36,6 @@
   --menu-v2-badge-bg: var(--v2-background-bg-layer-02);
   --menu-v2-badge-border: var(--v2-border-border-base);
   --menu-v2-hover: var(--v2-overlay-simple-overlay-hover);
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
 
   box-sizing: border-box;
   display: flex;
