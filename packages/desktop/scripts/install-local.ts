@@ -24,14 +24,42 @@ try {
   process.exit(1)
 }
 
-console.log(`install-local: removing existing ${installedApp} (if present)`)
-try {
-  await $`rm -rf ${installedApp}`
-} catch {
-  // ignore
+// An app can't overwrite its own bundle while running. If OpenCode is open,
+// write a detached shell script that waits for it to exit, swaps the bundle,
+// relaunches, and cleans up — the same pattern used by Sparkle/Squirrel.Mac.
+const runningPid = (await $`pgrep -x OpenCode`.quiet().nothrow().text()).trim()
+
+if (!runningPid) {
+  await swap()
+  console.log(`install-local: installed OpenCode.app into /Applications`)
+  process.exit(0)
 }
 
-console.log(`install-local: copying ${builtApp} -> ${installedApp}`)
-await $`cp -R ${builtApp} ${installedApp}`
+console.log(`install-local: OpenCode is running (pid ${runningPid}), scheduling swap on exit`)
+await scheduleSwap(runningPid)
+console.log(`install-local: OpenCode will be replaced on next launch. Quit OpenCode to apply.`)
 
-console.log(`install-local: installed OpenCode.app into /Applications`)
+async function swap() {
+  console.log(`install-local: removing existing ${installedApp} (if present)`)
+  await $`rm -rf ${installedApp}`
+  console.log(`install-local: copying ${builtApp} -> ${installedApp}`)
+  await $`cp -R ${builtApp} ${installedApp}`
+}
+
+async function scheduleSwap(pid: string) {
+  const script = `#!/bin/bash
+set -e
+for i in $(seq 1 60); do
+  if ! kill -0 ${pid} 2>/dev/null; then break; fi
+  sleep 0.5
+done
+rm -rf "${installedApp}"
+cp -R "${builtApp}" "${installedApp}"
+open "${installedApp}"
+rm -f "$0"
+`
+  const tmpScript = path.join(appDir, "swap.sh")
+  await Bun.write(tmpScript, script)
+  await $`chmod +x ${tmpScript}`
+  Bun.spawn(["bash", tmpScript], { stdio: ["ignore", "ignore", "ignore"], detached: true }).unref()
+}
