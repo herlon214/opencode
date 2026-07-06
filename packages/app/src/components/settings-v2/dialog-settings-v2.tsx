@@ -1,4 +1,4 @@
-import { Component } from "solid-js"
+import { Component, createSignal, startTransition } from "solid-js"
 import { Dialog as KobalteDialog } from "@kobalte/core/dialog"
 import { Dialog } from "@opencode-ai/ui/v2/dialog-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
@@ -13,12 +13,20 @@ import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 import { SettingsMcpV2 } from "./mcp"
 import { SettingsSkillsV2 } from "./skills"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 
 export const DialogSettings: Component<{
   sessionID?: string
+  defaultValue?: string
 }> = (props) => {
   const language = useLanguage()
   const platform = usePlatform()
+  const dialog = useDialog()
+  const [tab, setTab] = createSignal(props.defaultValue ?? "general")
+
+  const showProviders = () => {
+    void dialog.show(() => <DialogSettings sessionID={props.sessionID} defaultValue="providers" />)
+  }
 
   return (
     <Dialog size="x-large" variant="settings" class="settings-v2-dialog">
@@ -41,7 +49,13 @@ export const DialogSettings: Component<{
           />
         </svg>
       </KobalteDialog.CloseButton>
-      <TabsV2 orientation="vertical" variant="settings" defaultValue="general" class="settings-v2">
+      <TabsV2
+        orientation="vertical"
+        variant="settings"
+        value={tab()}
+        onChange={(value) => void startTransition(() => setTab(value))}
+        class="settings-v2"
+      >
         <TabsV2.List>
           <div class="flex flex-col justify-between h-full w-full">
             <div class="flex flex-col gap-3 w-full">
@@ -103,7 +117,7 @@ export const DialogSettings: Component<{
           <SettingsServersV2 />
         </TabsV2.Content>
         <TabsV2.Content value="providers" class="settings-v2-panel">
-          <SettingsProvidersV2 />
+          <SettingsProvidersV2 onBack={showProviders} />
         </TabsV2.Content>
         <TabsV2.Content value="models" class="settings-v2-panel">
           <SettingsModelsV2 />
