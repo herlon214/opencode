@@ -46,6 +46,7 @@ import { SessionRetry } from "@opencode-ai/session-ui/session-retry"
 import { isScrollKeyTarget, scrollKey, scrollKeyOwner, ScrollView } from "@opencode-ai/ui/scroll-view"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { SessionProgressIndicatorV2 } from "@opencode-ai/session-ui/v2/session-progress-indicator-v2"
+import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { TextField } from "@opencode-ai/ui/text-field"
@@ -1260,12 +1261,21 @@ export function MessageTimeline(props: {
       }),
       200,
     )
+    const tokenRateLabel = createMemo(() => {
+      const rate = speed()
+      if (!(rate > 0)) return ""
+      return language.t("ui.message.duration.tokensPerSecond", {
+        count: new Intl.NumberFormat(language.intl()).format(Math.round(rate)),
+      })
+    })
     const title = (showSummary: boolean) => (
       <span data-slot="in-progress-group-title" class="min-w-0 flex items-center gap-2 text-14-medium text-text-strong">
         <Show when={active()}>
-          <span data-slot="in-progress-group-spinner">
-            <SessionProgressIndicatorV2 speed={speed()} />
-          </span>
+          <Tooltip placement="bottom" value={tokenRateLabel()} inactive={!tokenRateLabel()}>
+            <span data-slot="in-progress-group-spinner">
+              <SessionProgressIndicatorV2 speed={speed()} />
+            </span>
+          </Tooltip>
         </Show>
         <span data-slot="in-progress-group-label" class="shrink-0">
           {label()}
