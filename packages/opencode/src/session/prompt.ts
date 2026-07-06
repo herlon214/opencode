@@ -35,6 +35,7 @@ import { Tool } from "@/tool/tool"
 import { Permission } from "@/permission"
 import { SessionStatus } from "./status"
 import { SessionGoal } from "./goal"
+import { Todo } from "./todo"
 import { LLM } from "./llm"
 import { Shell } from "@opencode-ai/core/shell"
 import { ShellID } from "@/tool/shell/id"
@@ -116,6 +117,7 @@ const layer = Layer.effect(
   Effect.gen(function* () {
     const status = yield* SessionStatus.Service
     const goal = yield* SessionGoal.Service
+    const todo = yield* Todo.Service
     const sessions = yield* Session.Service
     const agents = yield* Agent.Service
     const provider = yield* Provider.Service
@@ -1094,6 +1096,7 @@ const layer = Layer.effect(
           let msgs = yield* MessageV2.filterCompactedEffect(sessionID).pipe(
             Effect.provideService(Database.Service, database),
           )
+          msgs = MessageV2.filterPlanFresh(msgs)
 
           const { user: lastUser, assistant: lastAssistant, finished: lastFinished, tasks } = MessageV2.latest(msgs)
 
@@ -1135,6 +1138,7 @@ const layer = Layer.effect(
                 yield* Effect.logInfo("goal continuation stopped at max steps", { "session.id": sessionID })
                 break
               }
+              step++
               yield* Effect.logInfo("goal continuation", { "session.id": sessionID })
               const continueMsg = yield* sessions.updateMessage({
                 id: MessageID.ascending(),
@@ -1151,6 +1155,43 @@ const layer = Layer.effect(
                 type: "text",
                 synthetic: true,
                 text: "Continue working toward the goal. If the goal is complete, call the update_goal tool with status complete. If you are blocked, call it with status blocked.",
+                time: { start: Date.now(), end: Date.now() },
+              })
+              continue
+            }
+            const touchedTodos =
+              lastAssistantMsg?.parts.some((part) => part.type === "tool" && part.tool === "todowrite") ?? false
+            const todos = yield* todo.get(sessionID)
+            const pendingTodos = touchedTodos
+              ? todos.filter((item) => item.status === "pending" || item.status === "in_progress")
+              : []
+            if (pendingTodos.length > 0) {
+              const agent = yield* agents.get(lastUser.agent)
+              const maxSteps = agent?.steps ?? Infinity
+              if (step >= maxSteps) {
+                yield* Effect.logInfo("todo continuation stopped at max steps", { "session.id": sessionID })
+                break
+              }
+              step++
+              yield* Effect.logInfo("todo continuation", { "session.id": sessionID, pending: pendingTodos.length })
+              const list = pendingTodos
+                .map((item) => `- [${item.status === "in_progress" ? "•" : " "}] ${item.content}`)
+                .join("\n")
+              const continueMsg = yield* sessions.updateMessage({
+                id: MessageID.ascending(),
+                role: "user",
+                sessionID,
+                time: { created: Date.now() },
+                agent: lastUser.agent,
+                model: lastUser.model,
+              })
+              yield* sessions.updatePart({
+                id: PartID.ascending(),
+                messageID: continueMsg.id,
+                sessionID,
+                type: "text",
+                synthetic: true,
+                text: `You stopped before finishing your todo list. Continue working through the remaining items:\n\n${list}\n\nMark each item completed via the todowrite tool as you finish it. If an item is no longer relevant, mark it cancelled.`,
                 time: { start: Date.now(), end: Date.now() },
               })
               continue
@@ -1654,6 +1695,7 @@ export const node = LayerNode.make({
   deps: [
     SessionStatus.node,
     SessionGoal.node,
+    Todo.node,
     Session.node,
     Agent.node,
     Provider.node,
