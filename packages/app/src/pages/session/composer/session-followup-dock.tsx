@@ -1,4 +1,4 @@
-import { For, Show, createMemo } from "solid-js"
+import { For, Show, createEffect, createMemo, on } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Button } from "@opencode-ai/ui/button"
 import { DockTray } from "@opencode-ai/ui/dock-surface"
@@ -20,6 +20,15 @@ export function SessionFollowupDock(props: {
 
   const toggle = () => setStore("collapsed", (value) => !value)
   const total = createMemo(() => props.items.length)
+  let listRef: HTMLDivElement | undefined
+
+  createEffect(
+    on(total, () => {
+      const el = listRef
+      if (!el) return
+      el.scrollTop = el.scrollHeight
+    }),
+  )
   const label = createMemo(() =>
     language.t(total() === 1 ? "session.followupDock.summary.one" : "session.followupDock.summary.other", {
       count: total(),
@@ -93,7 +102,7 @@ export function SessionFollowupDock(props: {
       </Show>
 
       <Show when={!store.collapsed}>
-        <div class="px-3 pb-7 flex flex-col gap-1.5 max-h-42 overflow-y-auto no-scrollbar">
+        <div ref={listRef} class="px-3 pb-7 flex flex-col gap-1.5 max-h-42 overflow-y-auto no-scrollbar">
           <For each={props.items}>
             {(item) => (
               <div class="flex items-center gap-2 min-w-0 py-1">
