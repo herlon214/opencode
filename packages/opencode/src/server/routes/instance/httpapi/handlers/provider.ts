@@ -2,6 +2,8 @@ import { ProviderAuth } from "@/provider/auth"
 import { Config } from "@/config/config"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { Provider } from "@/provider/provider"
+import { Auth } from "@/auth"
+import { Env } from "@/env"
 
 import { mapValues } from "remeda"
 import { Effect, Schema } from "effect"
@@ -36,6 +38,8 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
     const cfg = yield* Config.Service
     const provider = yield* Provider.Service
     const svc = yield* ProviderAuth.Service
+    const auth = yield* Auth.Service
+    const env = yield* Env.Service
 
     const list = Effect.fn("ProviderHttpApi.list")(function* () {
       const config = yield* cfg.get()
@@ -47,18 +51,41 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
         if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) filtered[key] = value
       }
       const connected = yield* provider.list()
+      const envs = yield* env.all()
+      const auths = yield* auth.all().pipe(Effect.orDie)
+
+      const disabledWithCredentials: Record<string, Provider.Info> = {}
+      for (const providerID of disabled) {
+        if (enabled && !enabled.has(providerID)) continue
+        const id = ProviderV2.ID.make(providerID)
+        if (connected[id]) continue
+        const databaseEntry = all[providerID]
+        if (!databaseEntry) continue
+        const envCred = databaseEntry.env?.map((key: string) => envs[key]).find(Boolean)
+        const hasAuth = Boolean(auths[providerID])
+        if (!envCred && !hasAuth) continue
+        const info = Provider.fromModelsDevProvider(databaseEntry)
+        info.disabled = true
+        info.models = {}
+        disabledWithCredentials[providerID] = info
+      }
+
       const providers = Object.assign(
         mapValues(filtered, (item) => Provider.fromModelsDevProvider(item)),
         connected,
+        disabledWithCredentials,
+      )
+      const activeForDefault = Object.fromEntries(
+        Object.entries(providers).filter(([, p]) => !p.disabled && Object.keys(p.models).length > 0),
       )
       return {
         all: Object.values(providers).map(Provider.toPublicInfo),
-        default: Provider.defaultModelIDs(providers),
+        default: Provider.defaultModelIDs(activeForDefault),
         connected: Object.keys(connected),
       }
     })
 
-    const auth = Effect.fn("ProviderHttpApi.auth")(function* () {
+    const authMethods = Effect.fn("ProviderHttpApi.auth")(function* () {
       return yield* svc.methods()
     })
 
@@ -106,7 +133,7 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
 
     return handlers
       .handle("list", list)
-      .handle("auth", auth)
+      .handle("auth", authMethods)
       .handleRaw("authorize", authorizeRaw)
       .handle("callback", callback)
   }),

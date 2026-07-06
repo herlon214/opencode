@@ -43,9 +43,11 @@ export const SettingsProvidersV2: Component<{ onBack?: () => void }> = (props) =
   }
 
   const connected = createMemo(() => {
-    return providers
+    const active = providers
       .connected()
       .filter((p) => p.id !== "opencode" || Object.values(p.models).find((m) => m.cost?.input))
+    const disabled = providers.disabled()
+    return [...active, ...disabled]
   })
 
   const popular = createMemo(() => {
@@ -111,6 +113,28 @@ export const SettingsProvidersV2: Component<{ onBack?: () => void }> = (props) =
       })
   }
 
+  const enableProvider = async (providerID: string, name: string) => {
+    const before = serverSync().data.config.disabled_providers ?? []
+    const next = before.filter((id) => id !== providerID)
+    serverSync().set("config", "disabled_providers", next)
+
+    await serverSync()
+      .updateConfig({ disabled_providers: next })
+      .then(() => {
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("provider.enable.toast.title", { provider: name }),
+          description: language.t("provider.enable.toast.description", { provider: name }),
+        })
+      })
+      .catch((err: unknown) => {
+        serverSync().set("config", "disabled_providers", before)
+        const message = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description: message })
+      })
+  }
+
   const disconnect = async (providerID: string, name: string) => {
     if (isConfigCustom(providerID)) {
       await serverSdk()
@@ -154,7 +178,7 @@ export const SettingsProvidersV2: Component<{ onBack?: () => void }> = (props) =
             >
               <For each={connected()}>
                 {(item) => (
-                  <div class="settings-v2-provider-row group">
+                  <div class="settings-v2-provider-row group" classList={{ "settings-v2-provider-row-disabled": item.disabled }}>
                     <div class="settings-v2-provider-lead">
                       <ProviderIcon
                         id={item.id}
@@ -164,19 +188,43 @@ export const SettingsProvidersV2: Component<{ onBack?: () => void }> = (props) =
                       />
                       <div class="settings-v2-provider-main">
                         <span class="settings-v2-provider-name truncate">{item.name}</span>
-                        <Tag>{type(item)}</Tag>
+                        <Show when={item.disabled} fallback={<Tag>{type(item)}</Tag>}>
+                          <Tag>{language.t("settings.providers.tag.disabled")}</Tag>
+                        </Show>
                       </div>
                     </div>
                     <Show
-                      when={canDisconnect(item)}
+                      when={item.disabled}
                       fallback={
-                        <span class="settings-v2-provider-env-hint">
-                          {language.t("settings.providers.connected.environmentDescription")}
-                        </span>
+                        <Show
+                          when={canDisconnect(item)}
+                          fallback={
+                            <span class="settings-v2-provider-env-hint">
+                              {language.t("settings.providers.connected.environmentDescription")}
+                            </span>
+                          }
+                        >
+                          <div class="settings-v2-provider-actions">
+                            <ButtonV2
+                              size="normal"
+                              variant="ghost-muted"
+                              onClick={() => void disableProvider(item.id, item.name)}
+                            >
+                              {language.t("common.disable")}
+                            </ButtonV2>
+                            <ButtonV2
+                              size="normal"
+                              variant="ghost-muted"
+                              onClick={() => void disconnect(item.id, item.name)}
+                            >
+                              {language.t("common.disconnect")}
+                            </ButtonV2>
+                          </div>
+                        </Show>
                       }
                     >
-                      <ButtonV2 size="normal" variant="ghost-muted" onClick={() => void disconnect(item.id, item.name)}>
-                        {language.t("common.disconnect")}
+                      <ButtonV2 size="normal" variant="neutral" onClick={() => void enableProvider(item.id, item.name)}>
+                        {language.t("common.enable")}
                       </ButtonV2>
                     </Show>
                   </div>

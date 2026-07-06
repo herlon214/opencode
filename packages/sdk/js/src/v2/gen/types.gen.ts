@@ -2125,6 +2125,7 @@ export type Provider = {
   models: {
     [key: string]: Model
   }
+  disabled?: boolean
 }
 
 export type ExperimentalCapabilities = {

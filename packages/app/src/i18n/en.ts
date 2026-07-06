@@ -208,6 +208,8 @@ export const dict = {
 
   "provider.disconnect.toast.disconnected.title": "{{provider}} disconnected",
   "provider.disconnect.toast.disconnected.description": "{{provider}} models are no longer available.",
+  "provider.enable.toast.title": "{{provider}} enabled",
+  "provider.enable.toast.description": "{{provider}} models are available again.",
 
   "model.tag.free": "Free",
   "model.tag.latest": "Latest",
@@ -236,6 +238,8 @@ export const dict = {
   "common.open": "Open",
   "common.connect": "Connect",
   "common.disconnect": "Disconnect",
+  "common.enable": "Enable",
+  "common.disable": "Disable",
   "common.continue": "Continue",
   "common.submit": "Submit",
   "common.save": "Save",
@@ -1047,6 +1051,7 @@ export const dict = {
   "settings.providers.tag.config": "Config",
   "settings.providers.tag.custom": "Custom",
   "settings.providers.tag.other": "Other",
+  "settings.providers.tag.disabled": "Disabled",
   "settings.models.title": "Models",
   "settings.models.description": "Model settings will be configurable here.",
   "settings.agents.title": "Agents",

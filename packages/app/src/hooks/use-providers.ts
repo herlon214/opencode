@@ -56,6 +56,13 @@ export function useProviders(directory?: Accessor<string | undefined>) {
         (v) => Array.from(v),
       )
     },
+    disabled: () =>
+      pipe(
+        providers().all,
+        Iterable.map(([, p]) => p),
+        Iterable.filter((p) => p.disabled === true),
+        (v) => Array.from(v),
+      ),
     paid: () => {
       const connected = new Set(providers().connected)
       return [
