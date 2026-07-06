@@ -11,21 +11,34 @@ export interface CreateWebSocketFetchOptions {
   connectTimeout?: number
   idleTimeout?: number
   maxConnectionAge?: number
+  maxConnectionsPerSession?: number
   streamRetries?: number
 }
 
-interface PoolEntry {
+interface PoolLane {
   socket?: WebSocket
   connectedAt?: number
   lastUsedAt: number
   busy: boolean
+}
+
+interface PoolEntry {
+  lanes: PoolLane[]
   fallback: boolean
   streamFailures: number
+  lastRequest?: Record<string, unknown>
+  lastResponse?: LastResponse
+}
+
+interface LastResponse {
+  id: string
+  output: unknown[]
 }
 
 const DEFAULT_CONNECT_TIMEOUT = 15_000
 const DEFAULT_IDLE_TIMEOUT = 5 * 60 * 1000
 const DEFAULT_MAX_CONNECTION_AGE = 55 * 60 * 1000
+const DEFAULT_MAX_CONNECTIONS_PER_SESSION = 4
 const CONNECTION_LIMIT_REACHED_CODE = "websocket_connection_limit_reached"
 
 export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
@@ -34,6 +47,7 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
   const connectTimeout = options?.connectTimeout ?? DEFAULT_CONNECT_TIMEOUT
   const idleTimeout = options?.idleTimeout ?? DEFAULT_IDLE_TIMEOUT
   const maxConnectionAge = options?.maxConnectionAge ?? DEFAULT_MAX_CONNECTION_AGE
+  const maxConnectionsPerSession = Math.max(1, options?.maxConnectionsPerSession ?? DEFAULT_MAX_CONNECTIONS_PER_SESSION)
   const streamRetries = options?.streamRetries ?? 5
   const pruneTimer = setInterval(() => prune(), Math.min(idleTimeout, 60_000))
   if (typeof pruneTimer === "object" && "unref" in pruneTimer && typeof pruneTimer.unref === "function") {
@@ -69,21 +83,22 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
     }
     const key = `${sessionID}:conversation`
 
-    const entry = pool.get(key) ?? { lastUsedAt: Date.now(), busy: false, fallback: false, streamFailures: 0 }
+    const entry = pool.get(key) ?? { lanes: [], fallback: false, streamFailures: 0 }
     pool.set(key, entry)
 
     if (entry.fallback) {
       return httpFetch(input, httpInit)
     }
-    if (entry.busy) {
+    const lane = laneFor(entry, maxConnectionsPerSession)
+    if (!lane) {
       return httpFetch(input, httpInit)
     }
 
-    entry.busy = true
-    entry.lastUsedAt = Date.now()
+    lane.busy = true
+    lane.lastUsedAt = Date.now()
     try {
-      entry.socket = await socket(
-        entry,
+      lane.socket = await socket(
+        lane,
         options?.url ?? url,
         OpenAIWebSocket.normalizeHeaders(httpInit?.headers),
         connectTimeout,
@@ -97,31 +112,32 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
         rejectFirstEvent = reject
       })
       const response = OpenAIWebSocket.streamResponsesWebSocket({
-        socket: entry.socket,
-        body,
+        socket: lane.socket,
+        body: bodyForWebSocket(entry, body),
         idleTimeout,
         signal: init?.signal ?? undefined,
         onFirstEvent: (error) => resolveFirstEvent(error ?? true),
+        onComplete: (event) => recordCompletion(entry, body, event),
         onTerminal: (event) => {
-          entry.busy = false
-          entry.lastUsedAt = Date.now()
+          lane.busy = false
+          lane.lastUsedAt = Date.now()
           entry.streamFailures = 0
           if (event.type !== "response.completed" && event.type !== "response.done") {
-            invalidate(entry)
+            invalidate(lane)
           }
         },
         onConnectionInvalid: (error) => {
-          entry.busy = false
-          entry.lastUsedAt = Date.now()
+          lane.busy = false
+          lane.lastUsedAt = Date.now()
           if (!entry.fallback) recordStreamFailure(entry)
-          invalidate(entry)
+          invalidate(lane)
           resolveFirstEvent(false)
         },
         onAbort: (error) => {
-          entry.busy = false
-          entry.lastUsedAt = Date.now()
+          lane.busy = false
+          lane.lastUsedAt = Date.now()
           entry.streamFailures = 0
-          invalidate(entry)
+          invalidate(lane)
           rejectFirstEvent(error)
         },
         onRetryableTerminal: async (event) => {
@@ -141,16 +157,16 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
       if (!entry.fallback) return response
       return httpFetch(input, httpInit)
     } catch (error) {
-      entry.busy = false
-      entry.lastUsedAt = Date.now()
+      lane.busy = false
+      lane.lastUsedAt = Date.now()
       if (OpenAIWebSocket.isAbortError(error)) {
         entry.streamFailures = 0
-        invalidate(entry)
+        invalidate(lane)
         throw error
       }
 
       recordStreamFailure(entry)
-      invalidate(entry)
+      invalidate(lane)
       if (entry.fallback) return httpFetch(input, httpInit)
       return failedResponse(
         new ProviderError.ResponseStreamError(error instanceof Error ? error.message : String(error), {
@@ -169,17 +185,22 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
   function prune() {
     const now = Date.now()
     for (const [key, entry] of pool) {
-      if (entry.busy) continue
       if (entry.fallback) continue
-      if (now - entry.lastUsedAt < idleTimeout) continue
-      invalidate(entry)
-      pool.delete(key)
+      entry.lanes = entry.lanes.filter((lane) => {
+        if (lane.busy) return true
+        if (now - lane.lastUsedAt < idleTimeout) return true
+        invalidate(lane)
+        return false
+      })
+      if (entry.lanes.length === 0) pool.delete(key)
     }
   }
 
   function close() {
     clearInterval(pruneTimer)
-    for (const entry of pool.values()) invalidate(entry)
+    for (const entry of pool.values()) {
+      for (const lane of entry.lanes) invalidate(lane)
+    }
     pool.clear()
   }
 
@@ -187,11 +208,66 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
     const key = `${sessionID}:conversation`
     const entry = pool.get(key)
     if (!entry) return
-    invalidate(entry)
+    for (const lane of entry.lanes) invalidate(lane)
     pool.delete(key)
   }
 
   return Object.assign(websocketFetch, { close, remove })
+}
+
+function laneFor(entry: PoolEntry, maxConnectionsPerSession: number) {
+  const idle = entry.lanes.find((lane) => !lane.busy)
+  if (idle) return idle
+  if (entry.lanes.length >= maxConnectionsPerSession) return undefined
+  const lane: PoolLane = { lastUsedAt: Date.now(), busy: false }
+  entry.lanes.push(lane)
+  return lane
+}
+
+function bodyForWebSocket(entry: PoolEntry, body: Record<string, unknown>) {
+  const incremental = incrementalInput(entry, body)
+  if (!incremental || !entry.lastResponse) return body
+  return {
+    ...body,
+    previous_response_id: entry.lastResponse.id,
+    input: incremental,
+  }
+}
+
+function incrementalInput(entry: PoolEntry, body: Record<string, unknown>) {
+  if (!entry.lastRequest || !entry.lastResponse) return undefined
+  if (typeof body.previous_response_id === "string") return undefined
+  if (!requestPropertiesMatch(entry.lastRequest, body)) return undefined
+  if (!Array.isArray(entry.lastRequest.input) || !Array.isArray(body.input)) return undefined
+
+  const prefix = [...entry.lastRequest.input, ...entry.lastResponse.output]
+  if (body.input.length < prefix.length) return undefined
+  if (!jsonEqual(body.input.slice(0, prefix.length), prefix)) return undefined
+  return body.input.slice(prefix.length)
+}
+
+function requestPropertiesMatch(previous: Record<string, unknown>, current: Record<string, unknown>) {
+  return jsonEqual(requestProperties(previous), requestProperties(current))
+}
+
+function requestProperties(body: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(body).filter(
+      ([key]) => !["background", "client_metadata", "input", "previous_response_id", "stream"].includes(key),
+    ),
+  )
+}
+
+function recordCompletion(entry: PoolEntry, request: Record<string, unknown>, event: Record<string, unknown>) {
+  const response = isRecord(event.response) ? event.response : undefined
+  if (typeof response?.id !== "string") return
+  if (!Array.isArray(response.output)) return
+  entry.lastRequest = request
+  entry.lastResponse = { id: response.id, output: response.output }
+}
+
+function jsonEqual(a: unknown, b: unknown) {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 function connectionLimitError(event: Record<string, unknown>) {
@@ -214,7 +290,7 @@ function failedResponse(error: ProviderError.ResponseStreamError) {
 }
 
 async function socket(
-  entry: PoolEntry,
+  lane: PoolLane,
   url: string,
   headers: Record<string, string>,
   connectTimeout: number,
@@ -222,31 +298,31 @@ async function socket(
   signal?: AbortSignal | null,
 ) {
   if (
-    entry.socket?.readyState === WebSocket.OPEN &&
-    entry.connectedAt &&
-    Date.now() - entry.connectedAt < maxConnectionAge
+    lane.socket?.readyState === WebSocket.OPEN &&
+    lane.connectedAt &&
+    Date.now() - lane.connectedAt < maxConnectionAge
   ) {
-    return entry.socket
+    return lane.socket
   }
 
-  invalidate(entry)
+  invalidate(lane)
   const next = await OpenAIWebSocket.connectResponsesWebSocket({
     url: OpenAIWebSocket.toWebSocketUrl(url),
     headers,
     timeout: connectTimeout,
     signal: signal ?? undefined,
   })
-  entry.connectedAt = Date.now()
+  lane.connectedAt = Date.now()
   return next
 }
 
-function invalidate(entry: PoolEntry) {
-  if (entry.socket) {
-    entry.socket.on("error", () => {})
-    entry.socket.terminate()
-    entry.socket = undefined
+function invalidate(lane: PoolLane) {
+  if (lane.socket) {
+    lane.socket.on("error", () => {})
+    lane.socket.terminate()
+    lane.socket = undefined
   }
-  entry.connectedAt = undefined
+  lane.connectedAt = undefined
 }
 
 export function withoutInternalHeaders<T extends { headers?: HeadersInit }>(init: T | undefined): T | undefined {

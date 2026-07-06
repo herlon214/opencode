@@ -60,7 +60,7 @@ describe("RuntimeFlags", () => {
       expect(flags.experimentalWorkspaces).toBe(true)
       expect(flags.experimentalIconDiscovery).toBe(true)
       expect(flags.experimentalNativeLlm).toBe(false)
-      expect(flags.experimentalWebSockets).toBe(true)
+      expect(flags.disableWebSockets).toBe(false)
       expect(flags.client).toBe("desktop")
     }),
   )
@@ -91,13 +91,13 @@ describe("RuntimeFlags", () => {
 
   it.effect("enables WebSockets by default and respects explicit opt-out", () =>
     Effect.gen(function* () {
-      const explicit = yield* readFlags.pipe(Effect.provide(fromConfig({ OPENCODE_EXPERIMENTAL_WEBSOCKETS: "false" })))
+      const explicit = yield* readFlags.pipe(Effect.provide(fromConfig({ OPENCODE_DISABLE_WEBSOCKETS: "true" })))
       const umbrella = yield* readFlags.pipe(Effect.provide(fromConfig({ OPENCODE_EXPERIMENTAL: "true" })))
       const unset = yield* readFlags.pipe(Effect.provide(fromConfig({})))
 
-      expect(explicit.experimentalWebSockets).toBe(false)
-      expect(umbrella.experimentalWebSockets).toBe(true)
-      expect(unset.experimentalWebSockets).toBe(true)
+      expect(explicit.disableWebSockets).toBe(true)
+      expect(umbrella.disableWebSockets).toBe(false)
+      expect(unset.disableWebSockets).toBe(false)
     }),
   )
 

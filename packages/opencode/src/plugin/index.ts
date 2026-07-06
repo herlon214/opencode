@@ -56,17 +56,12 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Plugin") {}
 
-export function experimentalWebSocketsEnabled(input: { enabled: boolean; channel?: string }) {
-  return input.enabled
-}
-
 // Built-in plugins that are directly imported (not installed from npm)
 function internalPlugins(flags: RuntimeFlags.Info): PluginInstance[] {
   return [
-    // Temporary rollout: pre-release builds use WebSockets by default; releases require explicit opt-in.
     (input) =>
       CodexAuthPlugin(input, {
-        experimentalWebSockets: experimentalWebSocketsEnabled({ enabled: flags.experimentalWebSockets }),
+        webSockets: !flags.disableWebSockets,
       }),
     CopilotAuthPlugin,
     GitlabAuthPlugin,

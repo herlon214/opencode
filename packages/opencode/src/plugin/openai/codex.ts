@@ -101,7 +101,7 @@ interface TokenResponse {
 interface CodexAuthPluginOptions {
   issuer?: string
   codexApiEndpoint?: string
-  experimentalWebSockets?: boolean
+  webSockets?: boolean
 }
 
 async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: PkceCodes): Promise<TokenResponse> {
@@ -313,7 +313,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
       provider: "openai",
       async loader(getAuth) {
         const auth = await getAuth()
-        const websocketFetch = options.experimentalWebSockets
+        const websocketFetch = options.webSockets
           ? OpenAIWebSocketPool.createWebSocketFetch({ httpFetch: fetch })
           : undefined
         if (websocketFetch) {
@@ -383,7 +383,9 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
             const headers = new Headers()
             if (init?.headers) {
               if (init.headers instanceof Headers) {
-                init.headers.forEach((value, key) => headers.set(key, value))
+                init.headers.forEach((value, key) => {
+                  headers.set(key, value)
+                })
               } else if (Array.isArray(init.headers)) {
                 for (const [key, value] of init.headers) {
                   if (value !== undefined) headers.set(key, String(value))

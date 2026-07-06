@@ -131,9 +131,9 @@ describe("plugin.codex", () => {
     })
   })
 
-  test("installs websocket transport only when experimental websockets are enabled", async () => {
+  test("installs websocket transport only when websockets are enabled", async () => {
     const disabled = await CodexAuthPlugin({} as never)
-    const enabled = await CodexAuthPlugin({} as never, { experimentalWebSockets: true })
+    const enabled = await CodexAuthPlugin({} as never, { webSockets: true })
 
     const disabledOptions = await disabled.auth!.loader!(
       async () => ({ type: "api", key: "sk-test" }) as never,

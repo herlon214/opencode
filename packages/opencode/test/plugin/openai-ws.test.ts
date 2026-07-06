@@ -166,6 +166,46 @@ describe("plugin.openai.ws-pool", () => {
     fetch.close()
   })
 
+  test("uses previous_response_id with only incremental input after a completed response", async () => {
+    const messages: unknown[] = []
+    const assistantOutput = [{ type: "message", role: "assistant", content: [{ type: "output_text", text: "hello" }] }]
+    await using server = await createWebSocketServer((socket) => {
+      socket.on("message", (data) => {
+        messages.push(JSON.parse(data.toString()))
+        socket.send(
+          JSON.stringify({
+            type: "response.completed",
+            response: { id: `resp_${messages.length}`, output: assistantOutput },
+          }),
+        )
+      })
+    })
+    const fetch = OpenAIWebSocketPool.createWebSocketFetch({
+      url: server.url,
+    })
+    const firstInput = [{ type: "message", role: "user", content: [{ type: "input_text", text: "hi" }] }]
+    const secondInput = [
+      ...firstInput,
+      ...assistantOutput,
+      { type: "message", role: "user", content: [{ type: "input_text", text: "again" }] },
+    ]
+
+    const first = await fetch(server.url, streamRequest(undefined, undefined, { input: firstInput }))
+    expect(await first.text()).toContain("data: [DONE]")
+    const second = await fetch(server.url, streamRequest(undefined, undefined, { input: secondInput }))
+    expect(await second.text()).toContain("data: [DONE]")
+
+    expect(messages).toEqual([
+      { type: "response.create", input: firstInput },
+      {
+        type: "response.create",
+        previous_response_id: "resp_1",
+        input: [secondInput[2]],
+      },
+    ])
+    fetch.close()
+  })
+
   test("rotates a socket that exceeds max connection age", async () => {
     let connections = 0
     await using server = await createWebSocketServer((socket) => {
@@ -642,7 +682,38 @@ describe("plugin.openai.ws-pool", () => {
     fetch.close()
   })
 
-  test("falls back to HTTP while a websocket lane is busy", async () => {
+  test("uses four websocket lanes by default before falling back to HTTP", async () => {
+    let connections = 0
+    await using server = await createWebSocketServer((socket) => {
+      connections += 1
+      socket.once("message", () => {
+        socket.send(JSON.stringify({ type: "response.output_text.delta", delta: "started" }))
+      })
+    })
+    const aborts = Array.from({ length: 4 }, () => new AbortController())
+    const fetch = OpenAIWebSocketPool.createWebSocketFetch({
+      url: server.url,
+    })
+
+    const responses = await Promise.all(aborts.map((abort) => fetch(server.url, streamRequest({}, abort.signal))))
+    const text = responses.map((response) => response.text())
+    await waitFor(() => connections === 4, "websocket lanes did not connect")
+    const fallback = await fetch(server.url, streamRequest())
+
+    expect(await fallback.text()).toBe("http")
+    expect(server.httpRequests).toHaveLength(1)
+    expect(connections).toBe(4)
+    for (const abort of aborts) abort.abort(new Error("stop"))
+    expect((await Promise.all(text.map(readTextError))).map((error) => error.message)).toEqual([
+      "stop",
+      "stop",
+      "stop",
+      "stop",
+    ])
+    fetch.close()
+  })
+
+  test("falls back to HTTP when all websocket lanes are busy", async () => {
     let connections = 0
     await using server = await createWebSocketServer((socket) => {
       connections += 1
@@ -653,6 +724,7 @@ describe("plugin.openai.ws-pool", () => {
     const abort = new AbortController()
     const fetch = OpenAIWebSocketPool.createWebSocketFetch({
       url: server.url,
+      maxConnectionsPerSession: 1,
     })
 
     const first = await fetch(server.url, streamRequest({}, abort.signal))
@@ -662,7 +734,6 @@ describe("plugin.openai.ws-pool", () => {
 
     expect(await second.text()).toBe("http")
     expect(server.httpRequests).toHaveLength(1)
-    expect(connections).toBe(1)
     abort.abort(new Error("stop"))
     expect((await readTextError(firstText)).message).toContain("stop")
     fetch.close()
@@ -675,6 +746,7 @@ describe("plugin.openai.ws-pool", () => {
       url: server.url,
       connectTimeout: 20,
       streamRetries: 0,
+      maxConnectionsPerSession: 1,
     })
 
     const first = fetch(fallback.url, streamRequest())
@@ -773,7 +845,7 @@ describe("plugin.openai.ws-pool", () => {
   })
 })
 
-function streamRequest(headers?: Record<string, string>, signal?: AbortSignal): RequestInit {
+function streamRequest(headers?: Record<string, string>, signal?: AbortSignal, body?: Record<string, unknown>): RequestInit {
   return {
     method: "POST",
     headers: {
@@ -781,7 +853,7 @@ function streamRequest(headers?: Record<string, string>, signal?: AbortSignal): 
       authorization: "Bearer test",
       ...headers,
     },
-    body: JSON.stringify({ stream: true, input: "hi" }),
+    body: JSON.stringify({ stream: true, ...(body ?? { input: "hi" }) }),
     signal,
   }
 }
