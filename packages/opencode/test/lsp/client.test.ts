@@ -331,6 +331,63 @@ describe("LSPClient interop", () => {
     })
   })
 
+  test("fresh empty pull diagnostics clear stale pushed diagnostics", async () => {
+    const handle = spawnFakeServer() as any
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "client.cs")
+    await Bun.write(file, "class C {}\n")
+
+    await withTestInstance({
+      directory: tmp.path,
+      fn: async (ctx) => {
+        const client = await LSPClient.create({
+          serverID: "fake",
+          server: handle as unknown as LSPServer.Handle,
+          root: tmp.path,
+          directory: tmp.path,
+          instance: ctx,
+        })
+
+        const staleVersion = await client.notify.open({ path: file })
+        await client.connection.sendNotification("test/publish-diagnostics", {
+          uri: pathToFileURL(file).href,
+          version: staleVersion,
+          diagnostics: [
+            {
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 5 },
+              },
+              message: "stale pushed diagnostic",
+              severity: 1,
+            },
+          ],
+        })
+
+        for (let i = 0; i < 20 && (client.diagnostics.get(file)?.length ?? 0) === 0; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 25))
+        }
+        expect(client.diagnostics.get(file)?.[0]?.message).toBe("stale pushed diagnostic")
+
+        await client.connection.sendRequest("test/configure-pull-diagnostics", {
+          registerOn: "didChange",
+          registrations: [{ identifier: "clean" }],
+          documentDiagnosticsByIdentifier: {
+            clean: [],
+          },
+        })
+
+        await Bun.write(file, "class C { }\n")
+        const version = await client.notify.open({ path: file })
+        await client.waitForDiagnostics({ path: file, version, mode: "document" })
+
+        expect(client.diagnostics.get(file) ?? []).toEqual([])
+
+        await client.shutdown()
+      },
+    })
+  })
+
   test("document mode does not wait for the slowest pull identifier after current-file diagnostics arrive", async () => {
     const handle = spawnFakeServer() as any
     await using tmp = await tmpdir()

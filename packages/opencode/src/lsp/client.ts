@@ -149,6 +149,7 @@ export async function create(input: {
     for (const listener of diagnosticListeners) listener({ path: filePath, serverID: input.serverID })
   }
   const updatePullDiagnostics = (filePath: string, next: Diagnostic[]) => {
+    pushDiagnostics.delete(filePath)
     pullDiagnostics.set(filePath, next)
   }
   const emitRegistrationChange = () => {
