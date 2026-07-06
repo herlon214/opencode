@@ -1076,7 +1076,7 @@ describe("session.compaction.process", () => {
         expect(part?.type).toBe("compaction")
         expect(part?.tail_start_id).toBe(keep.id)
         expect(captured).toContain("zzzz")
-        expect(captured).not.toContain("keep tail")
+        expect(captured).toContain("keep tail")
 
         const filtered = MessageV2.filterCompacted(yield* MessageV2.stream(session.id))
         expect(filtered.map((msg) => msg.info.id).slice(0, 3)).toEqual([parent!, expect.any(String), keep.id])
@@ -1359,7 +1359,7 @@ describe("session.compaction.process", () => {
   )
 
   itCompaction.instance(
-    "summarizes only the head while keeping recent tail out of summary input",
+    "includes the full conversation including recent tail in summary input",
     () => {
       const stub = llm()
       let captured = ""
@@ -1387,8 +1387,8 @@ describe("session.compaction.process", () => {
         })
 
         expect(captured).toContain("older context")
-        expect(captured).not.toContain("keep this turn")
-        expect(captured).not.toContain("and this one too")
+        expect(captured).toContain("keep this turn")
+        expect(captured).toContain("and this one too")
         expect(captured).not.toContain("What did we do so far?")
       }).pipe(withCompaction({ llm: stub.llmLayer }))
     },

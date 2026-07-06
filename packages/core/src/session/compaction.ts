@@ -169,12 +169,21 @@ export const make = (dependencies: Dependencies) => {
     const selected = select(input.entries, config.tokens)
     const previousSummary = input.entries.find((entry) => entry.message.type === "compaction")?.message
     if (!selected || (selected.head.length === 0 && previousSummary?.type !== "compaction")) return false
+    const summaryOutput = Math.min(output || SUMMARY_OUTPUT_TOKENS, SUMMARY_OUTPUT_TOKENS)
+    const summaryBudget = context - summaryOutput
+    const headOnlyContext = [
+      previousSummary?.type === "compaction" ? previousSummary.recent : "",
+      selected.head,
+    ].filter(Boolean)
+    const fullContext = [...headOnlyContext, selected.recent].filter(Boolean)
+    // Prefer the full conversation so the summarizer sees completed work in the recent tail.
+    // Fall back to head-only when including the recent tail would overflow the summary budget.
+    const summaryContext = Token.estimate(fullContext.join("\n\n")) <= summaryBudget ? fullContext : headOnlyContext
     const summaryPrompt = buildPrompt({
       previousSummary: previousSummary?.type === "compaction" ? previousSummary.summary : undefined,
-      context: [previousSummary?.type === "compaction" ? previousSummary.recent : "", selected.head].filter(Boolean),
+      context: summaryContext,
     })
-    const summaryOutput = Math.min(output || SUMMARY_OUTPUT_TOKENS, SUMMARY_OUTPUT_TOKENS)
-    if (Token.estimate(summaryPrompt) > context - summaryOutput) return false
+    if (Token.estimate(summaryPrompt) > summaryBudget) return false
     const messageID = SessionMessage.ID.create()
     yield* dependencies.events.publish(SessionEvent.Compaction.Started, {
       sessionID: input.sessionID,

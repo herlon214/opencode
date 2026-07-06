@@ -32,6 +32,7 @@ const PRUNE_PROTECTED_TOOLS = ["skill"]
 const DEFAULT_TAIL_TURNS = 2
 const MIN_PRESERVE_RECENT_TOKENS = 2_000
 const MAX_PRESERVE_RECENT_TOKENS = 8_000
+const TEMPLATE_RESERVE_TOKENS = 8_192
 type Turn = {
   start: number
   end: number
@@ -191,10 +192,10 @@ const layer = Layer.effect(
       model: Provider.Model
     }) {
       const limit = input.cfg.compaction?.tail_turns ?? DEFAULT_TAIL_TURNS
-      if (limit <= 0) return { head: input.messages, tail_start_id: undefined }
+      if (limit <= 0) return { head: input.messages, tail: [], tail_start_id: undefined }
       const budget = preserveRecentBudget({ cfg: input.cfg, model: input.model })
       const all = turns(input.messages)
-      if (!all.length) return { head: input.messages, tail_start_id: undefined }
+      if (!all.length) return { head: input.messages, tail: [], tail_start_id: undefined }
       const recent = all.slice(-limit)
       const sizes = yield* Effect.forEach(
         recent,
@@ -231,9 +232,10 @@ const layer = Layer.effect(
         break
       }
 
-      if (!keep || keep.start === 0) return { head: input.messages, tail_start_id: undefined }
+      if (!keep || keep.start === 0) return { head: input.messages, tail: [], tail_start_id: undefined }
       return {
         head: input.messages.slice(0, keep.start),
+        tail: input.messages.slice(keep.start),
         tail_start_id: keep.id,
       }
     })
@@ -346,7 +348,15 @@ const layer = Layer.effect(
         { context: [], prompt: undefined },
       )
       const nextPrompt = compacting.prompt ?? buildPrompt({ previousSummary, context: compacting.context })
-      const msgs = structuredClone(selected.head)
+      const contextLimit = model.limit.context
+      const fullMessages = [...selected.head, ...selected.tail]
+      // Prefer the full conversation so the summarizer sees completed work in the recent tail.
+      // Fall back to head-only when including the tail would overflow the compaction model context.
+      const includeTail =
+        selected.tail.length > 0 &&
+        (contextLimit <= 0 ||
+          (yield* estimate({ messages: fullMessages, model })) + TEMPLATE_RESERVE_TOKENS <= contextLimit)
+      const msgs = structuredClone(includeTail ? fullMessages : selected.head)
       yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
       const modelMessages = yield* MessageV2.toModelMessagesEffect(msgs, model, {
         stripMedia: true,
