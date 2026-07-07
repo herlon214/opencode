@@ -42,6 +42,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { EffectBridge } from "@/effect/bridge"
 import { Question } from "../question"
 import { Todo } from "../session/todo"
+import { PlanComment } from "../session/plan-comment"
 import { LSP } from "@/lsp/lsp"
 import { Instruction } from "../session/instruction"
 import { FSUtil } from "@opencode-ai/core/fs-util"
@@ -245,7 +246,7 @@ const layer = Layer.effect(
             tool.patch,
             ...(tool.execute ? [tool.execute] : []),
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
-            ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
+            ...(flags.experimentalPlanMode && (flags.client === "cli" || flags.client === "desktop") ? [tool.plan] : []),
           ],
           task: tool.task,
           read: tool.read,
@@ -432,6 +433,7 @@ export const node = LayerNode.make({
     Plugin.node,
     Question.node,
     Todo.node,
+    PlanComment.node,
     Agent.node,
     Skill.node,
     Session.node,

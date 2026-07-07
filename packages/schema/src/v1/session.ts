@@ -201,6 +201,15 @@ export const CompactionPart = Schema.Struct({
 }).annotate({ identifier: "CompactionPart" })
 export type CompactionPart = Types.DeepMutable<Schema.Schema.Type<typeof CompactionPart>>
 
+export const PlanApprovalPart = Schema.Struct({
+  ...partBase,
+  type: Schema.Literal("plan_approval"),
+  plan_path: Schema.String,
+  mode: Schema.Literals(["fresh", "preserve"]),
+  plan_content: Schema.optional(Schema.String),
+}).annotate({ identifier: "PlanApprovalPart" })
+export type PlanApprovalPart = Types.DeepMutable<Schema.Schema.Type<typeof PlanApprovalPart>>
+
 export const SubtaskPart = Schema.Struct({
   ...partBase,
   type: Schema.Literal("subtask"),
@@ -367,6 +376,7 @@ export const Part = Schema.Union([
   AgentPart,
   RetryPart,
   CompactionPart,
+  PlanApprovalPart,
 ]).annotate({ discriminator: "type", identifier: "Part" })
 export type Part =
   | TextPart
@@ -381,6 +391,7 @@ export type Part =
   | AgentPart
   | RetryPart
   | CompactionPart
+  | PlanApprovalPart
 
 const AssistantErrorSchema = Schema.Union([
   AuthError.EffectSchema,

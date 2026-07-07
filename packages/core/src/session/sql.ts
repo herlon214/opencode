@@ -9,6 +9,7 @@ import { PermissionV1 } from "../v1/permission"
 import { ProjectV2 } from "../project"
 import type { SessionSchema } from "./schema"
 import type { MessageID, PartID, SessionV1 } from "../v1/session"
+import type { SessionPlanComment } from "@opencode-ai/schema/session-plan-comment"
 import { WorkspaceV2 } from "../workspace"
 import { Timestamps } from "../database/schema.sql"
 import type { SystemContext } from "../system-context/index"
@@ -126,6 +127,25 @@ export const TodoTable = sqliteTable(
     primaryKey({ columns: [table.session_id, table.position] }),
     index("todo_session_idx").on(table.session_id),
   ],
+)
+
+export const PlanCommentTable = sqliteTable(
+  "plan_comment",
+  {
+    id: text()
+      .$type<SessionPlanComment.ID>()
+      .primaryKey(),
+    session_id: text()
+      .$type<SessionSchema.ID>()
+      .notNull()
+      .references(() => SessionTable.id, { onDelete: "cascade" }),
+    line: integer().notNull(),
+    text: text().notNull(),
+    author: text(),
+    created: integer().notNull(),
+    ...Timestamps,
+  },
+  (table) => [index("plan_comment_session_idx").on(table.session_id)],
 )
 
 export const SessionMessageTable = sqliteTable(

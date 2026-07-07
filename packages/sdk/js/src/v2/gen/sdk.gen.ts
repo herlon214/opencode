@@ -209,6 +209,14 @@ import type {
   SessionMessageResponses,
   SessionMessagesErrors,
   SessionMessagesResponses,
+  SessionPlanCommentAddErrors,
+  SessionPlanCommentAddResponses,
+  SessionPlanCommentClearErrors,
+  SessionPlanCommentClearResponses,
+  SessionPlanCommentListErrors,
+  SessionPlanCommentListResponses,
+  SessionPlanCommentRemoveErrors,
+  SessionPlanCommentRemoveResponses,
   SessionPromptAsyncErrors,
   SessionPromptAsyncResponses,
   SessionPromptErrors,
@@ -3377,6 +3385,165 @@ export class Provider extends HeyApiClient {
   }
 }
 
+export class PlanComment extends HeyApiClient {
+  /**
+   * Clear all plan comments
+   *
+   * Delete all plan review comments for a session.
+   */
+  public clear<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      SessionPlanCommentClearResponses,
+      SessionPlanCommentClearErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/plan_comment",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * List plan comments
+   *
+   * Retrieve all plan review comments for a session.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      SessionPlanCommentListResponses,
+      SessionPlanCommentListErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/plan_comment",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Add a plan comment
+   *
+   * Add a review comment anchored to a line in the plan file.
+   */
+  public add<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      line?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      text?: string
+      author?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "line" },
+            { in: "body", key: "text" },
+            { in: "body", key: "author" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      SessionPlanCommentAddResponses,
+      SessionPlanCommentAddErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/plan_comment",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Remove a plan comment
+   *
+   * Delete a single plan review comment by ID.
+   */
+  public remove<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      commentID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "path", key: "commentID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      SessionPlanCommentRemoveResponses,
+      SessionPlanCommentRemoveErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/plan_comment/{commentID}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Goal extends HeyApiClient {
   /**
    * Clear session goal
@@ -4479,6 +4646,11 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _planComment?: PlanComment
+  get planComment(): PlanComment {
+    return (this._planComment ??= new PlanComment({ client: this.client }))
   }
 
   private _goal?: Goal

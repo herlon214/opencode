@@ -471,9 +471,11 @@ function runLsp(p: ToolProps<typeof LspTool>): ToolInline {
 }
 
 function runPlanExit(p: ToolProps<typeof PlanExitTool>): ToolInline {
+  const mode = p.metadata.mode
+  const modeLabel = mode === "fresh" ? "fresh" : mode === "preserve" ? "preserve" : ""
   return {
     icon: "→",
-    title: text(p.frame.state.title) || "Switching to build agent",
+    title: text(p.frame.state.title) || `Switching to build agent${modeLabel ? ` (${modeLabel})` : ""}`,
     mode: "block",
     body: p.frame.status === "completed" ? text(p.frame.state.output) : undefined,
   }

@@ -3,7 +3,7 @@ Plan mode is active. The user indicated that they do not want you to execute yet
 
 ## Plan File Info:
 ${planInfo}
-You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
+The plan file is the single source of truth for the plan. Build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions. Do not repeat the plan content in your messages — keep your messages brief and let the plan file hold the detail.
 
 ## Plan Workflow
 

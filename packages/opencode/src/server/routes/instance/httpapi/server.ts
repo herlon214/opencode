@@ -40,6 +40,7 @@ import { SessionGoal } from "@/session/goal"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "@/session/todo"
+import { PlanComment } from "@/session/plan-comment"
 import { SessionShare } from "@/share/session"
 import { ShareNext } from "@/share/share-next"
 import { Skill } from "@/skill"
@@ -233,6 +234,7 @@ const app = LayerNode.group([
   Permission.node,
   PermissionSaved.node,
   Todo.node,
+  PlanComment.node,
   Session.node,
   SessionGoal.node,
   SessionProjector.node,

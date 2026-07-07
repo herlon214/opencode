@@ -340,6 +340,44 @@
   }
 }
 
+[data-component="plan-approval-part"] {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--v2-state-fg-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v2-state-fg-success) 24%, transparent);
+
+  [data-slot="plan-approval-part-icon"] {
+    flex: 0 0 auto;
+    color: var(--v2-state-fg-success);
+  }
+
+  [data-slot="plan-approval-part-content"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  [data-slot="plan-approval-part-title"] {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--v2-text-text-base);
+  }
+
+  [data-slot="plan-approval-part-path"] {
+    font-size: var(--font-size-xs);
+    color: var(--v2-text-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 [data-component="reasoning-part"] {
   width: 100%;
   color: var(--v2-text-text-muted);

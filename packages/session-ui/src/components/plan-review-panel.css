@@ -1,0 +1,222 @@
+[data-component="plan-review-panel"] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  [data-slot="plan-review-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--v2-border-border-base);
+    flex: 0 0 auto;
+  }
+
+  [data-slot="plan-review-title"] {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--v2-text-text-base);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-slot="plan-review-clear"] {
+    flex: 0 0 auto;
+    font-size: var(--font-size-xs);
+    color: var(--v2-text-text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+
+    &:hover {
+      color: var(--v2-text-text-base);
+      background: var(--v2-background-bg-hover);
+    }
+  }
+
+  [data-slot="plan-review-scroll"] {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  [data-slot="plan-review-loading"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 0;
+  }
+
+  [data-slot="plan-review-content"] {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+  }
+
+  [data-slot="plan-review-line"] {
+    display: flex;
+    flex-direction: column;
+    padding: 0 12px;
+
+    &[data-commented] {
+      background: color-mix(in srgb, var(--v2-state-fg-info) 6%, transparent);
+    }
+
+    &:hover [data-slot="plan-review-line-number"] {
+      opacity: 1;
+    }
+  }
+
+  [data-slot="plan-review-line-row"] {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 1.5em;
+  }
+
+  [data-slot="plan-review-line-number"] {
+    flex: 0 0 auto;
+    min-width: 2.5em;
+    text-align: right;
+    color: var(--v2-text-text-muted);
+    font-size: var(--font-size-xs);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+    user-select: none;
+    line-height: var(--line-height-normal);
+  }
+
+  [data-slot="plan-review-line-text"] {
+    flex: 1 1 auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--v2-text-text-base);
+  }
+
+  [data-slot="plan-review-comment-box"] {
+    margin: 4px 0 8px 3.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 6px;
+    background: var(--v2-background-bg-elevated);
+    border: 1px solid var(--v2-border-border-base);
+  }
+
+  [data-slot="plan-review-comment-input"] {
+    width: 100%;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--v2-text-text-base);
+    background: var(--v2-background-bg-base);
+    border: 1px solid var(--v2-border-border-base);
+    border-radius: 4px;
+    padding: 6px 8px;
+    resize: vertical;
+    outline: none;
+
+    &:focus {
+      border-color: var(--v2-border-border-interactive);
+    }
+  }
+
+  [data-slot="plan-review-comment-actions"] {
+    display: flex;
+    gap: 6px;
+  }
+
+  [data-slot="plan-review-comment-submit"] {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--v2-text-text-on-accent);
+    background: var(--v2-background-bg-accent);
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  [data-slot="plan-review-comment-cancel"] {
+    font-size: var(--font-size-xs);
+    color: var(--v2-text-text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+
+    &:hover {
+      color: var(--v2-text-text-base);
+      background: var(--v2-background-bg-hover);
+    }
+  }
+
+  [data-slot="plan-review-comments"] {
+    margin: 2px 0 4px 3.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  [data-slot="plan-review-comment"] {
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--v2-state-fg-info) 8%, var(--v2-background-bg-elevated));
+    border: 1px solid color-mix(in srgb, var(--v2-state-fg-info) 16%, transparent);
+  }
+
+  [data-slot="plan-review-comment-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+
+  [data-slot="plan-review-comment-author"] {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--v2-text-text-muted);
+  }
+
+  [data-slot="plan-review-comment-delete"] {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: var(--v2-text-text-muted);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+      color: var(--v2-state-fg-danger);
+      background: var(--v2-background-bg-hover);
+    }
+  }
+
+  [data-slot="plan-review-comment-text"] {
+    font-size: var(--font-size-sm);
+    color: var(--v2-text-text-base);
+    font-family: var(--font-family-sans);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

@@ -630,6 +630,16 @@ export type CompactionPart = {
   tail_start_id?: string
 }
 
+export type PlanApprovalPart = {
+  id: string
+  sessionID: string
+  messageID: string
+  type: "plan_approval"
+  plan_path: string
+  mode: "fresh" | "preserve"
+  plan_content?: string
+}
+
 export type Part =
   | TextPart
   | SubtaskPart
@@ -643,6 +653,7 @@ export type Part =
   | AgentPart
   | RetryPart
   | CompactionPart
+  | PlanApprovalPart
 
 export type Prompt = {
   text: string
@@ -2553,6 +2564,24 @@ export type NotFoundError = {
   data: {
     message: string
   }
+}
+
+export type PlanComment = {
+  id: string
+  sessionID: string
+  /**
+   * Line number in the plan file (0-indexed)
+   */
+  line: number
+  /**
+   * The comment text
+   */
+  text: string
+  author?: string
+  /**
+   * Creation timestamp (ms)
+   */
+  created: number
 }
 
 export type TextPartInput = {
@@ -9734,6 +9763,152 @@ export type SessionTodoResponses = {
 }
 
 export type SessionTodoResponse = SessionTodoResponses[keyof SessionTodoResponses]
+
+export type SessionPlanCommentClearData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/plan_comment"
+}
+
+export type SessionPlanCommentClearErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionPlanCommentClearError = SessionPlanCommentClearErrors[keyof SessionPlanCommentClearErrors]
+
+export type SessionPlanCommentClearResponses = {
+  /**
+   * Comments cleared
+   */
+  200: {
+    ok: "ok"
+  }
+}
+
+export type SessionPlanCommentClearResponse = SessionPlanCommentClearResponses[keyof SessionPlanCommentClearResponses]
+
+export type SessionPlanCommentListData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/plan_comment"
+}
+
+export type SessionPlanCommentListErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionPlanCommentListError = SessionPlanCommentListErrors[keyof SessionPlanCommentListErrors]
+
+export type SessionPlanCommentListResponses = {
+  /**
+   * Plan comments
+   */
+  200: Array<PlanComment>
+}
+
+export type SessionPlanCommentListResponse = SessionPlanCommentListResponses[keyof SessionPlanCommentListResponses]
+
+export type SessionPlanCommentAddData = {
+  body?: {
+    line: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    text: string
+    author?: string
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/plan_comment"
+}
+
+export type SessionPlanCommentAddErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionPlanCommentAddError = SessionPlanCommentAddErrors[keyof SessionPlanCommentAddErrors]
+
+export type SessionPlanCommentAddResponses = {
+  /**
+   * Created comment
+   */
+  200: PlanComment
+}
+
+export type SessionPlanCommentAddResponse = SessionPlanCommentAddResponses[keyof SessionPlanCommentAddResponses]
+
+export type SessionPlanCommentRemoveData = {
+  body?: never
+  path: {
+    sessionID: string
+    commentID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/plan_comment/{commentID}"
+}
+
+export type SessionPlanCommentRemoveErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionPlanCommentRemoveError = SessionPlanCommentRemoveErrors[keyof SessionPlanCommentRemoveErrors]
+
+export type SessionPlanCommentRemoveResponses = {
+  /**
+   * Comment removed
+   */
+  200: {
+    ok: "ok"
+  }
+}
+
+export type SessionPlanCommentRemoveResponse =
+  SessionPlanCommentRemoveResponses[keyof SessionPlanCommentRemoveResponses]
 
 export type SessionDiffData = {
   body?: never

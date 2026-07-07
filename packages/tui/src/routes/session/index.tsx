@@ -1773,6 +1773,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         <Match when={display() === "skill"}>
           <Skill {...toolprops} />
         </Match>
+        <Match when={display() === "plan_exit"}>
+          <PlanExit {...toolprops} />
+        </Match>
         <Match when={true}>
           <GenericTool {...toolprops} />
         </Match>
@@ -2584,6 +2587,22 @@ function Skill(props: ToolProps) {
   )
 }
 
+function PlanExit(props: ToolProps) {
+  const mode = createMemo(() => (typeof props.metadata.mode === "string" ? props.metadata.mode : undefined))
+  const complete = createMemo(() => props.part.state.status === "completed")
+  const label = createMemo(() => {
+    if (props.part.state.status === "error") return "Plan approval rejected"
+    if (!complete()) return "Requesting plan approval..."
+    const m = mode()
+    return m === "fresh" ? "Plan approved — starting fresh" : m === "preserve" ? "Plan approved — keeping context" : "Plan approved"
+  })
+  return (
+    <InlineTool icon="✓" pending="Requesting plan approval..." complete={complete()} part={props.part}>
+      {label()}
+    </InlineTool>
+  )
+}
+
 function Diagnostics(props: { diagnostics: unknown; filePath: string }) {
   const { theme } = useTheme()
   const terminalEnvironment = useTuiTerminalEnvironment()
@@ -2642,6 +2661,7 @@ const toolDisplays = new Set([
   "question",
   "skill",
   "execute",
+  "plan_exit",
 ])
 
 export function toolDisplay(tool: string) {

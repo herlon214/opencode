@@ -11,6 +11,7 @@ import {
   Info,
   OutputLengthError,
   Part,
+  PlanApprovalPart,
   SubtaskPart,
   User,
   WithParts,
@@ -574,6 +575,25 @@ export function filterCompacted(msgs: Iterable<WithParts>) {
 export const filterCompactedEffect = Effect.fnUntraced(function* (sessionID: SessionID) {
   return filterCompacted(yield* stream(sessionID))
 })
+
+export function filterPlanFresh(msgs: Iterable<WithParts>) {
+  const all = Array.from(msgs)
+  let freshIndex = -1
+  for (let i = all.length - 1; i >= 0; i--) {
+    const msg = all[i]
+    if (msg.info.role !== "assistant") continue
+    const part = msg.parts.find((p): p is PlanApprovalPart => p.type === "plan_approval")
+    if (!part) continue
+    if (part.mode === "fresh") {
+      freshIndex = i
+      break
+    }
+    // Latest approval is "preserve" — no fresh trimming
+    return all
+  }
+  if (freshIndex === -1) return all
+  return all.slice(freshIndex + 1)
+}
 
 // filterCompacted reorders messages for model consumption
 // ([compaction-user, summary, ...retained tail..., continue-user]), so array

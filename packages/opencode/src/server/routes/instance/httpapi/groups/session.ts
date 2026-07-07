@@ -9,6 +9,8 @@ import { SessionRevert } from "@/session/revert"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "@/session/todo"
+import { PlanComment } from "@/session/plan-comment"
+import { NonNegativeInt } from "@opencode-ai/schema/schema"
 import { MessageID, PartID, SessionID } from "@/session/schema"
 import { Snapshot } from "@/snapshot"
 import { Schema, Struct } from "effect"
@@ -77,6 +79,11 @@ export const RevertPayload = Schema.Struct(Struct.omit(SessionRevert.RevertInput
 export const PermissionResponsePayload = Schema.Struct({
   response: PermissionV1.Reply,
 })
+export const PlanCommentAddPayload = Schema.Struct({
+  line: NonNegativeInt,
+  text: Schema.String,
+  author: Schema.String.pipe(Schema.optional),
+})
 
 export const SessionPaths = {
   list: root,
@@ -84,6 +91,8 @@ export const SessionPaths = {
   get: `${root}/:sessionID`,
   children: `${root}/:sessionID/children`,
   todo: `${root}/:sessionID/todo`,
+  planComments: `${root}/:sessionID/plan_comment`,
+  planComment: `${root}/:sessionID/plan_comment/:commentID`,
   diff: `${root}/:sessionID/diff`,
   messages: `${root}/:sessionID/message`,
   message: `${root}/:sessionID/message/:messageID`,
@@ -167,6 +176,55 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.todo",
             summary: "Get session todos",
             description: "Retrieve the todo list associated with a specific session, showing tasks and action items.",
+          }),
+        ),
+        HttpApiEndpoint.get("planComments", SessionPaths.planComments, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Array(PlanComment.Info), "Plan comments"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.planComment.list",
+            summary: "List plan comments",
+            description: "Retrieve all plan review comments for a session.",
+          }),
+        ),
+        HttpApiEndpoint.post("planCommentAdd", SessionPaths.planComments, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          payload: PlanCommentAddPayload,
+          success: described(PlanComment.Info, "Created comment"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.planComment.add",
+            summary: "Add a plan comment",
+            description: "Add a review comment anchored to a line in the plan file.",
+          }),
+        ),
+        HttpApiEndpoint.delete("planCommentRemove", SessionPaths.planComment, {
+          params: { sessionID: SessionID, commentID: Schema.String },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Struct({ ok: Schema.Literal("ok") }), "Comment removed"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.planComment.remove",
+            summary: "Remove a plan comment",
+            description: "Delete a single plan review comment by ID.",
+          }),
+        ),
+        HttpApiEndpoint.delete("planCommentClear", SessionPaths.planComments, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Struct({ ok: Schema.Literal("ok") }), "Comments cleared"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.planComment.clear",
+            summary: "Clear all plan comments",
+            description: "Delete all plan review comments for a session.",
           }),
         ),
         HttpApiEndpoint.get("diff", SessionPaths.diff, {

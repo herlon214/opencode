@@ -22,6 +22,7 @@ export {
   Part,
   PartID,
   PatchPart,
+  PlanApprovalPart,
   Range,
   ReasoningPart,
   ResourceSource,

@@ -603,6 +603,13 @@ export function getToolInfo(
         icon: "bolt",
         title: input.name || i18n.t("ui.tool.skill"),
       }
+    case "plan_exit": {
+      const mode = typeof metadata?.mode === "string" ? metadata.mode : undefined
+      return {
+        icon: "check",
+        title: mode === "fresh" ? "Plan approved — fresh" : mode === "preserve" ? "Plan approved — kept context" : "Plan approved",
+      }
+    }
     default:
       return {
         icon: "mcp",
@@ -1703,6 +1710,25 @@ export function MessageDivider(props: { label: string }) {
 PART_MAPPING["compaction"] = function CompactionPartDisplay() {
   const i18n = useI18n()
   return <MessageDivider label={i18n.t("ui.messagePart.compaction")} />
+}
+
+PART_MAPPING["plan_approval"] = function PlanApprovalPartDisplay(props) {
+  const part = () => props.part as Extract<PartType, { type: "plan_approval" }>
+  const mode = createMemo(() => part().mode)
+  const planPath = createMemo(() => part().plan_path)
+  return (
+    <div data-component="plan-approval-part" data-mode={mode()}>
+      <div data-slot="plan-approval-part-icon">
+        <Icon name="check" size="small" />
+      </div>
+      <div data-slot="plan-approval-part-content">
+        <div data-slot="plan-approval-part-title">
+          {mode() === "fresh" ? "Plan approved — fresh context" : "Plan approved — context preserved"}
+        </div>
+        <div data-slot="plan-approval-part-path">{planPath()}</div>
+      </div>
+    </div>
+  )
 }
 
 PART_MAPPING["text"] = function TextPartDisplay(props) {

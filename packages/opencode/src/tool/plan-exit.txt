@@ -1,6 +1,9 @@
 Use this tool when you have completed the planning phase and are ready to exit plan agent.
 
-This tool will ask the user if they want to switch to build agent to start implementing the plan.
+This tool will ask the user to approve the plan and choose how to start implementation:
+- Fresh context: start the build agent with a clean context. The build agent will read the plan file from disk.
+- Keep context: start the build agent with the full planning context preserved.
+- Refine plan: stay in the plan agent to keep refining.
 
 Call this tool:
 - After you have written a complete plan to the plan file
@@ -10,4 +13,4 @@ Call this tool:
 Do NOT call this tool:
 - Before you have created or finalized the plan
 - If you still have unanswered questions about the implementation
-- If the user has indicated they want to continue planning
+- If the user has indicated that they want to continue planning

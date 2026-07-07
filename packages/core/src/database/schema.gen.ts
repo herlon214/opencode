@@ -282,6 +282,20 @@ export default {
         `CREATE INDEX \`session_project_directory_parent_time_updated_idx\` ON \`session\` (\`project_id\`,\`directory\`,\`parent_id\`,\`time_updated\`);`,
       )
       yield* tx.run(`CREATE INDEX \`todo_session_idx\` ON \`todo\` (\`session_id\`);`)
+      yield* tx.run(`
+        CREATE TABLE \`plan_comment\` (
+          \`id\` text PRIMARY KEY,
+          \`session_id\` text NOT NULL,
+          \`line\` integer NOT NULL,
+          \`text\` text NOT NULL,
+          \`author\` text,
+          \`created\` integer NOT NULL,
+          \`time_created\` integer NOT NULL,
+          \`time_updated\` integer NOT NULL,
+          CONSTRAINT \`fk_plan_comment_session_id_session_id_fk\` FOREIGN KEY (\`session_id\`) REFERENCES \`session\`(\`id\`) ON DELETE CASCADE
+        );
+      `)
+      yield* tx.run(`CREATE INDEX \`plan_comment_session_idx\` ON \`plan_comment\` (\`session_id\`);`)
     })
   },
 } satisfies Omit<DatabaseMigration.Migration, "id">

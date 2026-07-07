@@ -77,6 +77,7 @@ import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
 import { SessionReviewEmptyNoGitV2 } from "@opencode-ai/session-ui/v2/session-review-empty-no-git-v2"
+import { PlanReviewPanel, type PlanComment as PlanCommentInfo, type PlanCommentActions } from "@opencode-ai/session-ui/plan-review-panel"
 import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
 import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -496,6 +497,79 @@ export default function Page() {
   const diffs = createMemo(() => (params.id ? list(sync().data.session_diff[params.id]) : []))
   const canReview = createMemo(() => !!sync().project)
   const reviewTab = createMemo(() => isDesktop())
+
+  const planApproval = createMemo(() => {
+    if (!params.id) return undefined
+    const msgs = sync().data.message[params.id] ?? []
+    for (const msg of msgs) {
+      const parts = sync().data.part[msg.id] ?? []
+      for (const part of parts) {
+        if (part.type === "plan_approval") return part
+      }
+    }
+    return undefined
+  })
+  const planPath = createMemo(() => planApproval()?.plan_path)
+  const isPlanSession = createMemo(() => {
+    const session = info()
+    if (!session) return false
+    const msgs = sync().data.message[session.id] ?? []
+    const lastUser = msgs.filter((m) => m.role === "user").at(-1)
+    return lastUser?.agent === "plan"
+  })
+  const showPlanPanel = createMemo(() => (isPlanSession() || !!planApproval()) && !!planPath())
+
+  const [planComments, setPlanComments] = createStore<{ items: PlanCommentInfo[] }>({ items: [] })
+  const refreshPlanComments = async () => {
+    if (!params.id) return
+    try {
+      const res = await sdk().client.session.planComment.list({ sessionID: params.id })
+      setPlanComments("items", res.data ?? [])
+    } catch {
+      // ignore
+    }
+  }
+  createEffect(() => {
+    if (!showPlanPanel()) return
+    void refreshPlanComments()
+  })
+
+  const planCommentActions: PlanCommentActions = {
+    add: async (input) => {
+      if (!params.id) return
+      await sdk().client.session.planComment.add({ sessionID: params.id, line: input.line, text: input.text })
+      await refreshPlanComments()
+    },
+    remove: async (commentID) => {
+      if (!params.id) return
+      await sdk().client.session.planComment.remove({ sessionID: params.id, commentID })
+      await refreshPlanComments()
+    },
+    clear: async () => {
+      if (!params.id) return
+      await sdk().client.session.planComment.clear({ sessionID: params.id })
+      await refreshPlanComments()
+    },
+  }
+
+  const planPanel = () => (
+    <Show when={showPlanPanel() && planPath()}>
+      <PlanReviewPanel
+        planPath={planPath()!}
+        comments={planComments.items}
+        commentActions={planCommentActions}
+        readFile={async (path) => {
+          try {
+            const res = await sdk().client.file.read({ path })
+            const data = res.data as { content?: string } | string | undefined
+            return typeof data === "string" ? data : data?.content
+          } catch {
+            return undefined
+          }
+        }}
+      />
+    </Show>
+  )
   const tabState = createSessionTabs({
     tabs,
     pathFromTab: file.pathFromTab,
@@ -1264,7 +1338,9 @@ export default function Page() {
   const reviewPanelV2 = () => (
     <div class="flex flex-col h-full overflow-hidden bg-background-stronger contain-strict">
       <Show when={reviewPanelV2Rendered()}>
-        <ReviewPanelV2 {...reviewPanelV2Props()} />
+        <Show when={showPlanPanel()} fallback={<ReviewPanelV2 {...reviewPanelV2Props()} />}>
+          {planPanel()}
+        </Show>
       </Show>
     </div>
   )
@@ -1278,12 +1354,19 @@ export default function Page() {
       }}
     >
       <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
-        {reviewContent({
-          diffStyle: layout.review.diffStyle(),
-          onDiffStyleChange: layout.review.setDiffStyle,
-          loadingClass: "px-6 py-4 text-text-weak",
-          emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
-        })}
+        <Show
+          when={showPlanPanel()}
+          fallback={
+            reviewContent({
+              diffStyle: layout.review.diffStyle(),
+              onDiffStyleChange: layout.review.setDiffStyle,
+              loadingClass: "px-6 py-4 text-text-weak",
+              emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
+            })
+          }
+        >
+          {planPanel()}
+        </Show>
       </div>
     </div>
   )
