@@ -246,7 +246,7 @@ const layer = Layer.effect(
             tool.patch,
             ...(tool.execute ? [tool.execute] : []),
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
-            ...(flags.experimentalPlanMode && (flags.client === "cli" || flags.client === "desktop") ? [tool.plan] : []),
+            tool.plan,
           ],
           task: tool.task,
           read: tool.read,

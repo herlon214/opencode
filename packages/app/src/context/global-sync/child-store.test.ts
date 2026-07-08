@@ -25,11 +25,12 @@ const queryOptionsApi = {
   path: (directory: string | null) => ({
     queryKey: [directory, "path"],
     queryFn: async () => ({
+      home: "",
+      data: "",
       state: "",
       config: "",
       worktree: "",
       directory: directory ?? "",
-      home: "",
     }),
   }),
   agents: (directory: string) => ({ queryKey: [directory, "agents"], queryFn: async () => [] }),

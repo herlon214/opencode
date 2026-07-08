@@ -68,6 +68,9 @@ export type Event =
   | EventQuestionV2Replied
   | EventQuestionV2Rejected
   | EventTodoUpdated
+  | EventPlanCommentAdded
+  | EventPlanCommentRemoved
+  | EventPlanCommentCleared
   | EventLspUpdated
   | EventPermissionAsked
   | EventPermissionReplied
@@ -1385,6 +1388,42 @@ export type GlobalEvent = {
       }
     | {
         id: string
+        type: "plan_comment.added"
+        properties: {
+          id: string
+          sessionID: string
+          /**
+           * Line number in the plan file (0-indexed)
+           */
+          line: number
+          /**
+           * The comment text
+           */
+          text: string
+          author?: string
+          /**
+           * Creation timestamp (ms)
+           */
+          created: number
+        }
+      }
+    | {
+        id: string
+        type: "plan_comment.removed"
+        properties: {
+          sessionID: string
+          commentID: string
+        }
+      }
+    | {
+        id: string
+        type: "plan_comment.cleared"
+        properties: {
+          sessionID: string
+        }
+      }
+    | {
+        id: string
         type: "lsp.updated"
         properties: {
           [key: string]: unknown
@@ -2321,6 +2360,7 @@ export type File = {
 
 export type Path = {
   home: string
+  data: string
   state: string
   config: string
   worktree: string
@@ -2953,6 +2993,9 @@ export type V2Event =
   | QuestionV2Replied
   | QuestionV2Rejected
   | TodoUpdated
+  | PlanCommentAdded
+  | PlanCommentRemoved
+  | PlanCommentCleared
   | LspUpdated
   | PermissionAsked
   | PermissionReplied
@@ -5719,6 +5762,72 @@ export type TodoUpdated = {
   }
 }
 
+export type PlanCommentAdded = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "plan_comment.added"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    id: string
+    sessionID: string
+    /**
+     * Line number in the plan file (0-indexed)
+     */
+    line: number
+    /**
+     * The comment text
+     */
+    text: string
+    author?: string
+    /**
+     * Creation timestamp (ms)
+     */
+    created: number
+  }
+}
+
+export type PlanCommentRemoved = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "plan_comment.removed"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    commentID: string
+  }
+}
+
+export type PlanCommentCleared = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "plan_comment.cleared"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+  }
+}
+
 export type LspUpdated = {
   id: string
   metadata?: {
@@ -6888,6 +6997,45 @@ export type EventTodoUpdated = {
   properties: {
     sessionID: string
     todos: Array<Todo>
+  }
+}
+
+export type EventPlanCommentAdded = {
+  id: string
+  type: "plan_comment.added"
+  properties: {
+    id: string
+    sessionID: string
+    /**
+     * Line number in the plan file (0-indexed)
+     */
+    line: number
+    /**
+     * The comment text
+     */
+    text: string
+    author?: string
+    /**
+     * Creation timestamp (ms)
+     */
+    created: number
+  }
+}
+
+export type EventPlanCommentRemoved = {
+  id: string
+  type: "plan_comment.removed"
+  properties: {
+    sessionID: string
+    commentID: string
+  }
+}
+
+export type EventPlanCommentCleared = {
+  id: string
+  type: "plan_comment.cleared"
+  properties: {
+    sessionID: string
   }
 }
 
@@ -9836,7 +9984,7 @@ export type SessionPlanCommentListResponse = SessionPlanCommentListResponses[key
 
 export type SessionPlanCommentAddData = {
   body?: {
-    line: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    line: number
     text: string
     author?: string
   }

@@ -136,7 +136,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
     project: [],
     provider_auth: {},
     get path() {
-      const EMPTY = { state: "", config: "", worktree: "", directory: "", home: "" }
+      const EMPTY = { home: "", data: "", state: "", config: "", worktree: "", directory: "" }
       if (pathQuery.isLoading) return EMPTY
       return pathQuery.data ?? EMPTY
     },

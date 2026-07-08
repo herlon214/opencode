@@ -3468,7 +3468,7 @@ export class PlanComment extends HeyApiClient {
       sessionID: string
       directory?: string
       workspace?: string
-      line?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      line?: number
       text?: string
       author?: string
     },

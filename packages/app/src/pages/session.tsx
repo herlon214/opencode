@@ -509,13 +509,23 @@ export default function Page() {
     }
     return undefined
   })
-  const planPath = createMemo(() => planApproval()?.plan_path)
   const isPlanSession = createMemo(() => {
     const session = info()
     if (!session) return false
     const msgs = sync().data.message[session.id] ?? []
     const lastUser = msgs.filter((m) => m.role === "user").at(-1)
     return lastUser?.agent === "plan"
+  })
+  const planPath = createMemo(() => {
+    const approval = planApproval()
+    if (approval) return approval.plan_path
+    if (!isPlanSession()) return undefined
+    const session = info()
+    if (!session) return undefined
+    const p = sync().data.path
+    const isVcs = !!sync().data.vcs
+    const base = isVcs ? `${p.worktree}/.opencode/plans` : `${p.data}/plans`
+    return `${base}/${session.time.created}-${session.slug}.md`
   })
   const showPlanPanel = createMemo(() => (isPlanSession() || !!planApproval()) && !!planPath())
 
