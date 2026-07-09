@@ -97,6 +97,32 @@ describe("plugin.openai.ws", () => {
     expect(completed[0]?.type).toBe("response.done")
   })
 
+  test("repairs reasoning deltas that arrive without a start event", async () => {
+    await using server = await createWebSocketServer((socket) => {
+      socket.once("message", () => {
+        socket.send(
+          JSON.stringify({
+            type: "response.reasoning_summary_text.delta",
+            item_id: "rs_123",
+            output_index: 2,
+            summary_index: 0,
+            delta: "thinking",
+          }),
+        )
+        socket.send(JSON.stringify({ type: "response.completed", response: { id: "resp_123" } }))
+      })
+    })
+    const socket = await OpenAIWebSocket.connectResponsesWebSocket({ url: server.wsUrl, headers: {} })
+    const response = OpenAIWebSocket.streamResponsesWebSocket({
+      socket,
+      body: { stream: true, input: "hi" },
+    })
+
+    expect(await response.text()).toBe(
+      'data: {"type":"response.output_item.added","output_index":2,"item":{"type":"reasoning","id":"rs_123"}}\n\ndata: {"type":"response.reasoning_summary_text.delta","item_id":"rs_123","output_index":2,"summary_index":0,"delta":"thinking"}\n\ndata: {"type":"response.completed","response":{"id":"resp_123"}}\n\ndata: [DONE]\n\n',
+    )
+  })
+
   test("errors the SSE stream when the server closes before a terminal event", async () => {
     const invalid: Error[] = []
     await using server = await createWebSocketServer((socket) => {
@@ -206,25 +232,43 @@ describe("plugin.openai.ws-pool", () => {
     fetch.close()
   })
 
-  test("rotates a socket that exceeds max connection age", async () => {
+  test("does not reuse connection-local response state after rotating a socket", async () => {
     let connections = 0
+    const messages: unknown[] = []
+    const assistantOutput = [{ type: "message", role: "assistant", content: [{ type: "output_text", text: "hello" }] }]
     await using server = await createWebSocketServer((socket) => {
       connections += 1
-      socket.on("message", () => {
-        socket.send(JSON.stringify({ type: "response.completed", response: { id: `resp_${connections}` } }))
+      socket.on("message", (data) => {
+        messages.push(JSON.parse(data.toString()))
+        socket.send(
+          JSON.stringify({
+            type: "response.completed",
+            response: { id: `resp_${connections}`, output: assistantOutput },
+          }),
+        )
       })
     })
     const fetch = OpenAIWebSocketPool.createWebSocketFetch({
       url: server.url,
       maxConnectionAge: 0,
     })
+    const firstInput = [{ type: "message", role: "user", content: [{ type: "input_text", text: "hi" }] }]
+    const secondInput = [
+      ...firstInput,
+      ...assistantOutput,
+      { type: "message", role: "user", content: [{ type: "input_text", text: "again" }] },
+    ]
 
-    const first = await fetch(server.url, streamRequest())
+    const first = await fetch(server.url, streamRequest(undefined, undefined, { input: firstInput }))
     expect(await first.text()).toContain("data: [DONE]")
 
-    const second = await fetch(server.url, streamRequest())
+    const second = await fetch(server.url, streamRequest(undefined, undefined, { input: secondInput }))
     expect(await second.text()).toContain("data: [DONE]")
     expect(connections).toBe(2)
+    expect(messages).toEqual([
+      { type: "response.create", input: firstInput },
+      { type: "response.create", input: secondInput },
+    ])
     fetch.close()
   })
 

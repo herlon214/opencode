@@ -144,6 +144,7 @@ export function streamResponsesWebSocket(options: StreamResponsesWebSocketOption
   let completed = false
   let emitted = false
   let idleTimer: ReturnType<typeof setTimeout> | undefined
+  const reasoningParts = new Set<string>()
 
   function cleanup() {
     if (idleTimer) clearTimeout(idleTimer)
@@ -238,14 +239,16 @@ export function streamResponsesWebSocket(options: StreamResponsesWebSocketOption
     }
 
     if (!emitted) options.onFirstEvent?.()
-    controller?.enqueue(
-      encoder.encode(
-        `${text
-          .split(/\r?\n/)
-          .map((line) => `data: ${line}`)
-          .join("\n")}\n\n`,
-      ),
-    )
+    for (const frame of reasoningFrames(event, text, reasoningParts)) {
+      controller?.enqueue(
+        encoder.encode(
+          `${frame
+            .split(/\r?\n/)
+            .map((line) => `data: ${line}`)
+            .join("\n")}\n\n`,
+        ),
+      )
+    }
     emitted = true
     resetIdleTimeout("idle timeout waiting for websocket")
 
@@ -356,6 +359,53 @@ function parseWrappedError(event: Record<string, unknown> | undefined, body: str
       : undefined,
     body,
     message: isRecord(event.error) && typeof event.error.message === "string" ? event.error.message : `${status}`,
+  }
+}
+
+function reasoningFrames(event: Record<string, unknown> | undefined, body: string, parts: Set<string>) {
+  if (!event) return [body]
+  if (event.type === "response.output_item.added" && isRecord(event.item)) {
+    if (event.item.type === "reasoning" && typeof event.item.id === "string") parts.add(`${event.item.id}:0`)
+    return [body]
+  }
+
+  if (typeof event.item_id !== "string" || typeof event.summary_index !== "number") return [body]
+  const id = `${event.item_id}:${event.summary_index}`
+  const first = `${event.item_id}:0`
+  if (event.type === "response.reasoning_summary_part.added") {
+    if (event.summary_index === 0 || parts.has(first)) {
+      if (event.summary_index > 0) parts.add(id)
+      return [body]
+    }
+    parts.add(first)
+    parts.add(id)
+    return [JSON.stringify(reasoningItemAdded(event.item_id, event.output_index)), body]
+  }
+  if (event.type !== "response.reasoning_summary_text.delta" || parts.has(id)) return [body]
+
+  const starts: string[] = []
+  if (!parts.has(first)) {
+    parts.add(first)
+    starts.push(JSON.stringify(reasoningItemAdded(event.item_id, event.output_index)))
+  }
+  if (event.summary_index > 0) {
+    starts.push(
+      JSON.stringify({
+        type: "response.reasoning_summary_part.added",
+        item_id: event.item_id,
+        summary_index: event.summary_index,
+      }),
+    )
+  }
+  parts.add(id)
+  return [...starts, body]
+}
+
+function reasoningItemAdded(itemID: string, outputIndex: unknown) {
+  return {
+    type: "response.output_item.added",
+    output_index: typeof outputIndex === "number" ? outputIndex : 0,
+    item: { type: "reasoning", id: itemID },
   }
 }
 

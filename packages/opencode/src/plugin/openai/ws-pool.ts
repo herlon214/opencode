@@ -20,14 +20,14 @@ interface PoolLane {
   connectedAt?: number
   lastUsedAt: number
   busy: boolean
+  lastRequest?: Record<string, unknown>
+  lastResponse?: LastResponse
 }
 
 interface PoolEntry {
   lanes: PoolLane[]
   fallback: boolean
   streamFailures: number
-  lastRequest?: Record<string, unknown>
-  lastResponse?: LastResponse
 }
 
 interface LastResponse {
@@ -113,11 +113,11 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
       })
       const response = OpenAIWebSocket.streamResponsesWebSocket({
         socket: lane.socket,
-        body: bodyForWebSocket(entry, body),
+        body: bodyForWebSocket(lane, body),
         idleTimeout,
         signal: init?.signal ?? undefined,
         onFirstEvent: (error) => resolveFirstEvent(error ?? true),
-        onComplete: (event) => recordCompletion(entry, body, event),
+        onComplete: (event) => recordCompletion(lane, body, event),
         onTerminal: (event) => {
           lane.busy = false
           lane.lastUsedAt = Date.now()
@@ -224,23 +224,23 @@ function laneFor(entry: PoolEntry, maxConnectionsPerSession: number) {
   return lane
 }
 
-function bodyForWebSocket(entry: PoolEntry, body: Record<string, unknown>) {
-  const incremental = incrementalInput(entry, body)
-  if (!incremental || !entry.lastResponse) return body
+function bodyForWebSocket(lane: PoolLane, body: Record<string, unknown>) {
+  const incremental = incrementalInput(lane, body)
+  if (!incremental || !lane.lastResponse) return body
   return {
     ...body,
-    previous_response_id: entry.lastResponse.id,
+    previous_response_id: lane.lastResponse.id,
     input: incremental,
   }
 }
 
-function incrementalInput(entry: PoolEntry, body: Record<string, unknown>) {
-  if (!entry.lastRequest || !entry.lastResponse) return undefined
+function incrementalInput(lane: PoolLane, body: Record<string, unknown>) {
+  if (!lane.lastRequest || !lane.lastResponse) return undefined
   if (typeof body.previous_response_id === "string") return undefined
-  if (!requestPropertiesMatch(entry.lastRequest, body)) return undefined
-  if (!Array.isArray(entry.lastRequest.input) || !Array.isArray(body.input)) return undefined
+  if (!requestPropertiesMatch(lane.lastRequest, body)) return undefined
+  if (!Array.isArray(lane.lastRequest.input) || !Array.isArray(body.input)) return undefined
 
-  const prefix = [...entry.lastRequest.input, ...entry.lastResponse.output]
+  const prefix = [...lane.lastRequest.input, ...lane.lastResponse.output]
   if (body.input.length < prefix.length) return undefined
   if (!jsonEqual(body.input.slice(0, prefix.length), prefix)) return undefined
   return body.input.slice(prefix.length)
@@ -258,12 +258,12 @@ function requestProperties(body: Record<string, unknown>) {
   )
 }
 
-function recordCompletion(entry: PoolEntry, request: Record<string, unknown>, event: Record<string, unknown>) {
+function recordCompletion(lane: PoolLane, request: Record<string, unknown>, event: Record<string, unknown>) {
   const response = isRecord(event.response) ? event.response : undefined
   if (typeof response?.id !== "string") return
   if (!Array.isArray(response.output)) return
-  entry.lastRequest = request
-  entry.lastResponse = { id: response.id, output: response.output }
+  lane.lastRequest = request
+  lane.lastResponse = { id: response.id, output: response.output }
 }
 
 function jsonEqual(a: unknown, b: unknown) {
@@ -323,6 +323,8 @@ function invalidate(lane: PoolLane) {
     lane.socket = undefined
   }
   lane.connectedAt = undefined
+  lane.lastRequest = undefined
+  lane.lastResponse = undefined
 }
 
 export function withoutInternalHeaders<T extends { headers?: HeadersInit }>(init: T | undefined): T | undefined {

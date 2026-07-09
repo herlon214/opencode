@@ -10,7 +10,8 @@ Enabled by default. Set `OPENCODE_DISABLE_WEBSOCKETS=true` to opt out.
 4. If that session is already in fallback mode, use HTTP.
 5. Otherwise, reuse an idle socket or open another lane up to the per-session limit.
 6. Send `response.create` and return WebSocket events as SSE.
-7. After a completed response, compatible follow-up requests use `previous_response_id` and send only the incremental input items.
+7. After a completed response, compatible follow-up requests on the same socket use `previous_response_id` and send only the incremental input items.
+8. Repair reasoning summary deltas that arrive without their start event before forwarding them to AI SDK.
 
 ## Lifetime
 
@@ -18,6 +19,7 @@ Enabled by default. Set `OPENCODE_DISABLE_WEBSOCKETS=true` to opt out.
 - Idle timeout: 5 minutes.
 - After a completed response, keep the socket for reuse.
 - Reuse a socket for up to 55 minutes, then replace it on the next request.
+- Replacing a socket clears its connection-local continuation state.
 - Up to 4 concurrent WebSocket lanes are opened per session; additional concurrent requests use HTTP.
 
 ## Retries
