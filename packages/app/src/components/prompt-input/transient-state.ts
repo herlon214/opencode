@@ -4,6 +4,8 @@ import type { PromptHistoryEntry } from "./history"
 
 export type PromptInputTransientState = {
   popover: "at" | "slash" | null
+  slashMenu: boolean
+  slashMenuQuery: string
   historyIndex: number
   savedPrompt: PromptHistoryEntry | null
   placeholder: number
@@ -17,6 +19,8 @@ export type PromptInputTransientState = {
 function resetPromptInputTransientState(setStore: SetStoreFunction<PromptInputTransientState>) {
   setStore({
     popover: null,
+    slashMenu: false,
+    slashMenuQuery: "",
     historyIndex: -1,
     savedPrompt: null,
     draggingType: null,
@@ -30,6 +34,8 @@ function resetPromptInputTransientState(setStore: SetStoreFunction<PromptInputTr
 export function createPromptInputTransientState(identity: Accessor<unknown>, placeholder: number) {
   const [store, setStore] = createStore<PromptInputTransientState>({
     popover: null,
+    slashMenu: false,
+    slashMenuQuery: "",
     historyIndex: -1,
     savedPrompt: null,
     placeholder,

@@ -120,6 +120,7 @@ describe("Config", () => {
       expect(
         ConfigMigrateV1.migrate({
           command: {
+            ignored: {},
             review: {
               template: "Review changes",
               description: "Review code",

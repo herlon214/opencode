@@ -21,8 +21,6 @@ import { createSessionTabs } from "@/pages/session/helpers"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { UserMessage } from "@opencode-ai/sdk/v2"
 import { useSessionLayout } from "@/pages/session/session-layout"
-import { useTabs } from "@/context/tabs"
-import { requireServerKey } from "@/utils/session-route"
 import { createSessionOwnership } from "./session-ownership"
 
 export type SessionCommandContext = {
@@ -30,6 +28,7 @@ export type SessionCommandContext = {
   setActiveMessage: (message: UserMessage | undefined) => void
   focusInput: () => void
   review?: () => boolean
+  fileBrowser?: () => boolean
 }
 
 const withCategory = (category: string) => {
@@ -52,7 +51,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const settings = useSettings()
   const sync = useSync()
   const terminal = useTerminal()
-  const sessionTabs = useTabs()
   const layout = useLayout()
   const navigate = useNavigate()
   const { params, sessionKey, tabs, view } = useSessionLayout()
@@ -90,6 +88,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     normalizeTab,
     review: actions.review,
     hasReview,
+    fileBrowser: actions.fileBrowser,
   })
   const activeFileTab = tabState.activeFileTab
   const closableTab = tabState.closableTab
@@ -274,6 +273,14 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     view().terminal.open()
   }
 
+  const closeTerminal = () => {
+    const id = terminal.active()
+    if (!id) return
+    const last = terminal.all().length === 1
+    void terminal.close(id)
+    if (last) view().terminal.close()
+  }
+
   const chooseMcp = () => {
     void openDialog(
       () => import("@/components/dialog-select-mcp"),
@@ -456,9 +463,9 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       title: language.t("command.session.new"),
       keybind: "mod+shift+s",
       slash: "new",
-      onSelect: () => {
-        if (params.serverKey) {
-          sessionTabs.newDraft({ server: requireServerKey(params.serverKey), directory: sdk().directory })
+      onSelect: (source) => {
+        if (settings.general.newLayoutDesigns()) {
+          command.trigger("tab.new", source)
           return
         }
         navigate(`/${params.dir}/session`)
@@ -580,6 +587,14 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   ]
 
   const terminalCmds = () => [
+    terminalCommand({
+      id: "terminal.close",
+      title: language.t("terminal.close"),
+      keybind: "mod+w",
+      hidden: true,
+      when: (event) => event.target instanceof Element && !!event.target.closest('[data-component="terminal"]'),
+      onSelect: closeTerminal,
+    }),
     terminalCommand({
       id: "terminal.new",
       title: language.t("command.terminal.new"),

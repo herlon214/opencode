@@ -3,8 +3,8 @@ import { createDebouncedMemo } from "@opencode-ai/ui/hooks"
 import { useGlobal } from "@/context/global"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
+import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
 import { ServerConnection } from "@/context/server"
-import { sessionPermissionRequest } from "@/pages/session/composer/session-request-tree"
 
 export function useSessionTabAvatarState(
   server: Accessor<ServerConnection.Key>,
@@ -27,16 +27,23 @@ export function useSessionTabAvatarState(
       return !permission.autoResponds(item, directory())
     })
   })
+  const hasQuestions = createMemo(() => {
+    const serverSync = sync()
+    if (!serverSync) return false
+    const [store] = serverSync.child(directory(), { bootstrap: false })
+    return !!sessionQuestionRequest(store.session, serverSync.session.data.question, sessionId())
+  })
   const blocked = createMemo(() => hasPermissions())
+  const needsAttention = createMemo(() => hasPermissions() || hasQuestions())
   const unread = createMemo(() => {
-    if (hasPermissions()) return true
+    if (needsAttention()) return true
     if (!connection()) return false
     return notification.ensureServerState(server()).session.unseenCount(sessionId()) > 0
   })
   const loading = createMemo(() => {
     const serverSync = sync()
     if (!serverSync) return false
-    if (hasPermissions()) return false
+    if (needsAttention()) return false
     return serverSync.session.data.session_working(sessionId())
   })
   const tokensPerSecond = createDebouncedMemo(
