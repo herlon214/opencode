@@ -232,6 +232,40 @@ describe("plugin.openai.ws-pool", () => {
     fetch.close()
   })
 
+  test("opens a separate Responses Lite socket and adds client metadata", async () => {
+    let connections = 0
+    const requests: unknown[] = []
+    await using server = await createWebSocketServer((socket) => {
+      connections += 1
+      socket.once("message", (data) => {
+        requests.push(JSON.parse(data.toString()))
+        socket.send(JSON.stringify({ type: "response.completed", response: { id: `resp_${connections}` } }))
+      })
+    })
+    const fetch = OpenAIWebSocketPool.createWebSocketFetch({ url: server.url })
+
+    const legacy = await fetch(server.url, streamRequest({ "x-session-affinity": "ses_original" }))
+    expect(await legacy.text()).toContain("data: [DONE]")
+    const lite = await fetch(
+      server.url,
+      streamRequest({
+        "session-id": "019f4860-9ca3-7000-81e9-08939c58b0fa",
+        "x-session-affinity": "019f4860-9ca3-7000-81e9-08939c58b0fa",
+        [OpenAIWebSocketPool.RESPONSES_LITE_HEADER]: "true",
+      }),
+    )
+
+    expect(await lite.text()).toContain("data: [DONE]")
+    expect(connections).toBe(2)
+    expect(requests[1]).toMatchObject({
+      type: "response.create",
+      client_metadata: {
+        [OpenAIWebSocketPool.RESPONSES_LITE_CLIENT_METADATA]: "true",
+      },
+    })
+    fetch.close()
+  })
+
   test("does not reuse connection-local response state after rotating a socket", async () => {
     let connections = 0
     const messages: unknown[] = []
@@ -889,7 +923,11 @@ describe("plugin.openai.ws-pool", () => {
   })
 })
 
-function streamRequest(headers?: Record<string, string>, signal?: AbortSignal, body?: Record<string, unknown>): RequestInit {
+function streamRequest(
+  headers?: Record<string, string>,
+  signal?: AbortSignal,
+  body?: Record<string, unknown>,
+): RequestInit {
   return {
     method: "POST",
     headers: {
