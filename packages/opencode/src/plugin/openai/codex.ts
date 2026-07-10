@@ -7,6 +7,7 @@ import { createServer } from "http"
 import { OpenAIWebSocketPool } from "./ws-pool"
 import { OauthCallbackPage } from "@opencode-ai/core/oauth/page"
 import { isRecord } from "@/util/record"
+import { v7 } from "uuid"
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const ISSUER = "https://auth.openai.com"
@@ -604,7 +605,7 @@ function prepareResponsesLiteRequest(input: {
 
   const sourceSessionID = input.headers.get("session-id")
   if (!sourceSessionID) throw new Error("Responses Lite requires a session-id header")
-  const sessionID = input.sessionIDs.get(sourceSessionID) ?? Bun.randomUUIDv7()
+  const sessionID = input.sessionIDs.get(sourceSessionID) ?? v7()
   input.sessionIDs.set(sourceSessionID, sessionID)
 
   input.request.input = [
