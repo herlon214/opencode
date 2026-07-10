@@ -1,5 +1,5 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { Effect, Layer, Context, Schema } from "effect"
+import { Effect, Layer, Context, Option, Schema } from "effect"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Snapshot } from "../snapshot"
@@ -9,6 +9,23 @@ import { MessageV2 } from "./message-v2"
 import { SessionID, MessageID, PartID } from "./schema"
 import { SessionRunState } from "./run-state"
 import { SessionSummary } from "./summary"
+
+const decodeTaskSessionID = Schema.decodeUnknownOption(SessionID)
+
+function createdTaskSessions(messages: SessionV1.WithParts[], revert: NonNullable<Session.Info["revert"]>) {
+  const result = new Set<SessionID>()
+  for (const message of messages) {
+    if (message.info.id < revert.messageID) continue
+    for (const part of message.parts) {
+      if (message.info.id === revert.messageID && revert.partID && part.id < revert.partID) continue
+      if (part.type !== "tool" || part.tool !== "task" || part.state.status === "pending") continue
+      const sessionID = decodeTaskSessionID(part.state.metadata?.sessionId ?? part.state.metadata?.sessionID)
+      if (Option.isNone(sessionID) || part.state.input.task_id === sessionID.value) continue
+      result.add(sessionID.value)
+    }
+  }
+  return result
+}
 
 export const RevertInput = Schema.Struct({
   sessionID: SessionID,
@@ -34,6 +51,24 @@ const layer = Layer.effect(
     const events = yield* EventV2Bridge.Service
     const summary = yield* SessionSummary.Service
     const state = yield* SessionRunState.Service
+
+    const updateTasks = Effect.fn("SessionRevert.updateTasks")(function* (input: {
+      sessionID: SessionID
+      archive: ReadonlySet<SessionID>
+      restore: ReadonlySet<SessionID>
+    }) {
+      for (const taskID of input.restore) {
+        const task = yield* sessions.get(taskID).pipe(Effect.option)
+        if (Option.isNone(task) || task.value.parentID !== input.sessionID || !task.value.time.archived) continue
+        yield* sessions.setArchived({ sessionID: taskID })
+      }
+      for (const taskID of input.archive) {
+        const task = yield* sessions.get(taskID).pipe(Effect.option)
+        if (Option.isNone(task) || task.value.parentID !== input.sessionID || task.value.time.archived) continue
+        yield* state.cancel(taskID)
+        yield* sessions.setArchived({ sessionID: taskID, time: Date.now() })
+      }
+    })
 
     const revert = Effect.fn("SessionRevert.revert")(function* (input: RevertInput) {
       yield* state.assertNotBusy(input.sessionID)
@@ -84,6 +119,13 @@ const layer = Layer.effect(
           files: diffs.length,
         },
       })
+      const previousTasks = session.revert ? createdTaskSessions(all, session.revert) : new Set<SessionID>()
+      const nextTasks = createdTaskSessions(all, rev)
+      yield* updateTasks({
+        sessionID: input.sessionID,
+        archive: new Set([...nextTasks].filter((taskID) => !previousTasks.has(taskID))),
+        restore: new Set([...previousTasks].filter((taskID) => !nextTasks.has(taskID))),
+      })
       return yield* sessions.get(input.sessionID).pipe(Effect.orDie)
     })
 
@@ -92,8 +134,14 @@ const layer = Layer.effect(
       yield* state.assertNotBusy(input.sessionID)
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
       if (!session.revert) return session
+      const messages = yield* sessions.messages({ sessionID: input.sessionID }).pipe(Effect.orDie)
       if (session.revert.snapshot) yield* snap.restore(session.revert.snapshot)
       yield* sessions.clearRevert(input.sessionID)
+      yield* updateTasks({
+        sessionID: input.sessionID,
+        archive: new Set(),
+        restore: createdTaskSessions(messages, session.revert),
+      })
       return yield* sessions.get(input.sessionID).pipe(Effect.orDie)
     })
 
@@ -102,6 +150,10 @@ const layer = Layer.effect(
       const sessionID = session.id
       const msgs = yield* sessions.messages({ sessionID }).pipe(Effect.orDie)
       const messageID = session.revert.messageID
+      for (const taskID of createdTaskSessions(msgs, session.revert)) {
+        const task = yield* sessions.get(taskID).pipe(Effect.option)
+        if (Option.isSome(task) && task.value.parentID === sessionID) yield* sessions.remove(taskID).pipe(Effect.ignore)
+      }
       const remove = [] as SessionV1.WithParts[]
       let target: SessionV1.WithParts | undefined
       for (const msg of msgs) {

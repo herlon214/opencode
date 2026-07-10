@@ -85,6 +85,31 @@ const tool = Effect.fn("test.tool")(function* (sessionID: SessionID, messageID: 
   })
 })
 
+const task = Effect.fn("test.task")(function* (
+  sessionID: SessionID,
+  messageID: MessageID,
+  taskID: SessionID,
+  resume = false,
+) {
+  const session = yield* Session.Service
+  return yield* session.updatePart({
+    id: PartID.ascending(),
+    messageID,
+    sessionID,
+    type: "tool" as const,
+    tool: "task",
+    callID: `call-${messageID}`,
+    state: {
+      status: "completed" as const,
+      input: resume ? { task_id: taskID } : {},
+      output: "done",
+      title: "task",
+      metadata: { sessionId: taskID },
+      time: { start: 0, end: 1 },
+    },
+  })
+})
+
 const read = (file: string) => Effect.promise(() => fs.readFile(file, "utf-8"))
 const write = (file: string, text: string) => Effect.promise(() => fs.writeFile(file, text))
 
@@ -96,6 +121,52 @@ const tokens = {
 }
 
 describe("revert + compact workflow", () => {
+  it.live(
+    "rolls created task sessions back with the chat",
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          const session = yield* Session.Service
+          const revert = yield* SessionRevert.Service
+          const sid = (yield* session.create({})).id
+          const first = yield* session.create({ parentID: sid, title: "first" })
+          const second = yield* session.create({ parentID: sid, title: "second" })
+          const resumed = yield* session.create({ parentID: sid, title: "resumed" })
+
+          const u1 = yield* user(sid)
+          yield* text(sid, u1.id, "first")
+          const a1 = yield* assistant(sid, u1.id, dir)
+          yield* task(sid, a1.id, first.id)
+          const u2 = yield* user(sid)
+          yield* text(sid, u2.id, "second")
+          const a2 = yield* assistant(sid, u2.id, dir)
+          yield* task(sid, a2.id, second.id)
+          yield* task(sid, a2.id, resumed.id, true)
+
+          yield* revert.revert({ sessionID: sid, messageID: u2.id })
+          expect((yield* session.get(first.id)).time.archived).toBeUndefined()
+          expect((yield* session.get(second.id)).time.archived).toBeDefined()
+          expect((yield* session.get(resumed.id)).time.archived).toBeUndefined()
+
+          yield* revert.revert({ sessionID: sid, messageID: u1.id })
+          expect((yield* session.get(first.id)).time.archived).toBeDefined()
+          expect((yield* session.get(second.id)).time.archived).toBeDefined()
+
+          yield* revert.revert({ sessionID: sid, messageID: u2.id })
+          expect((yield* session.get(first.id)).time.archived).toBeUndefined()
+          expect((yield* session.get(second.id)).time.archived).toBeDefined()
+
+          yield* revert.unrevert({ sessionID: sid })
+          expect((yield* session.get(second.id)).time.archived).toBeUndefined()
+
+          yield* revert.revert({ sessionID: sid, messageID: u2.id })
+          yield* revert.cleanup(yield* session.get(sid))
+          expect(new Set((yield* session.children(sid)).map((child) => child.id))).toEqual(new Set([first.id, resumed.id]))
+        }),
+      { git: true },
+    ),
+  )
+
   it.live(
     "should properly handle compact command after revert",
     provideTmpdirInstance(
