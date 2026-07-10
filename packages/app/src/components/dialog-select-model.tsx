@@ -1,15 +1,5 @@
 import { Popover as Kobalte } from "@kobalte/core/popover"
-import {
-  Component,
-  ComponentProps,
-  createEffect,
-  createMemo,
-  For,
-  JSX,
-  onCleanup,
-  Show,
-  ValidComponent,
-} from "solid-js"
+import { Component, ComponentProps, createEffect, createMemo, For, JSX, onCleanup, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -134,7 +124,6 @@ export function ModelSelectorPopover(props: {
   provider?: string
   model?: ModelState
   children?: JSX.Element
-  triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -184,9 +173,7 @@ export function ModelSelectorPopover(props: {
       placement="top-start"
       gutter={4}
     >
-      <Kobalte.Trigger as={props.triggerAs ?? "div"} {...props.triggerProps}>
-        {props.children}
-      </Kobalte.Trigger>
+      <Kobalte.Trigger {...props.triggerProps}>{props.children}</Kobalte.Trigger>
       <Kobalte.Portal>
         <Kobalte.Content
           class="w-72 h-80 flex flex-col p-2 rounded-md border border-border-base bg-surface-raised-stronger-non-alpha shadow-md z-50 outline-none overflow-hidden"
@@ -248,7 +235,6 @@ export function ModelSelectorPopoverV2(props: {
   provider?: string
   model?: ModelState
   children?: JSX.Element
-  triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -384,9 +370,7 @@ export function ModelSelectorPopoverV2(props: {
 
   return (
     <MenuV2 open={props.open ?? store.open} modal={false} placement="top-start" gutter={6} onOpenChange={setOpen}>
-      <MenuV2.Trigger as={props.triggerAs ?? "div"} {...props.triggerProps}>
-        {props.children}
-      </MenuV2.Trigger>
+      <MenuV2.Trigger {...props.triggerProps}>{props.children}</MenuV2.Trigger>
       <MenuV2.Portal>
         <MenuV2.Content
           ref={(el: HTMLDivElement) => (contentRef = el)}

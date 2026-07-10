@@ -2183,10 +2183,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                             >
                               <ModelSelectorPopover
                                 model={props.controls.model.selection}
-                                triggerAs={Button}
                                 triggerProps={{
-                                  variant: "ghost",
-                                  size: "normal",
+                                  "data-component": "button",
+                                  "data-variant": "ghost",
+                                  "data-size": "normal",
                                   style: control(),
                                   class: "min-w-0 max-w-[320px] text-13-regular text-text-base group",
                                   "data-action": "prompt-model",
@@ -2421,10 +2421,10 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                 model={props.state.model}
                 open={props.state.open}
                 onOpenChange={props.state.onOpenChange}
-                triggerAs={Button}
                 triggerProps={{
-                  variant: "ghost",
-                  size: "normal",
+                  "data-component": "button",
+                  "data-variant": "ghost",
+                  "data-size": "normal",
                   style: props.state.style,
                   class:
                     "min-w-0 max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group",
@@ -2441,10 +2441,10 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
               model={props.state.model}
               open={props.state.open}
               onOpenChange={props.state.onOpenChange}
-              triggerAs={ButtonV2}
               triggerProps={{
-                variant: "ghost-muted",
-                size: "normal",
+                "data-component": "button-v2",
+                "data-variant": "ghost-muted",
+                "data-size": "normal",
                 style: props.state.style,
                 class: "min-w-0 max-w-[220px] justify-start ![font-weight:440] group",
                 classList: { "animate-in fade-in": props.state.shouldAnimate },
