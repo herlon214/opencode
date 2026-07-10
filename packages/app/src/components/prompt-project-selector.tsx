@@ -1,4 +1,4 @@
-import { createEffect, For, onCleanup, Show, type Accessor } from "solid-js"
+import { createEffect, createSignal, For, onCleanup, Show, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -185,6 +185,7 @@ export function PromptProjectSelector(props: {
   placement?: "bottom" | "bottom-start"
 }) {
   let contentRef: HTMLDivElement | undefined
+  const [triggerRef, setTriggerRef] = createSignal<HTMLButtonElement>()
   let restoreTrigger = true
 
   const activeItem = () =>
@@ -257,13 +258,14 @@ export function PromptProjectSelector(props: {
 
   return (
     <DropdownMenu
-      open={props.controller.open()}
+      open={props.controller.open() && triggerRef()?.isConnected === true}
       placement={props.placement ?? "bottom"}
       gutter={4}
       modal={false}
       onOpenChange={(open) => props.controller.setOpen(open)}
     >
       <DropdownMenu.Trigger
+        ref={setTriggerRef}
         data-action="prompt-project"
         class="flex h-7 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 transition-colors focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
         classList={{
