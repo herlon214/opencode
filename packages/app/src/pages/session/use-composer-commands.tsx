@@ -1,6 +1,6 @@
 import { useCommand, type CommandOption } from "@/context/command"
 import { useLanguage } from "@/context/language"
-import { useLocal } from "@/context/local"
+import { useLocal, type ModelSelection } from "@/context/local"
 import { useSettings } from "@/context/settings"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useSessionLayout } from "./session-layout"
@@ -15,7 +15,7 @@ const withCategory = (category: string) => {
 
 const OPEN_MODEL_SELECTOR_EVENT = "opencode:model-select"
 
-export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) => {
+export const useComposerCommands = (input: { model?: ModelSelection; focusInput?: () => void } = {}) => {
   const command = useCommand()
   const dialog = useDialog()
   const language = useLanguage()
@@ -23,6 +23,7 @@ export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) 
   const settings = useSettings()
   const { sessionKey } = useSessionLayout()
   const sessionOwnership = createSessionOwnership(sessionKey)
+  const model = input.model ?? local.model
   const modelCommand = withCategory(language.t("command.category.model"))
   const agentCommand = withCategory(language.t("command.category.agent"))
 
@@ -35,9 +36,13 @@ export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) 
       editor.dispatchEvent(new CustomEvent(OPEN_MODEL_SELECTOR_EVENT, { bubbles: true }))
       return
     }
+    const owner = sessionOwnership.capture()
     const { DialogSelectModel } = await import("@/components/dialog-select-model")
-    sessionOwnership.capture().run(() => {
-      void dialog.show(() => <DialogSelectModel model={local.model} />)
+    owner.run(() => {
+      void dialog.show(
+        () => <DialogSelectModel model={model} />,
+        () => requestAnimationFrame(() => input.focusInput?.()),
+      )
     })
   }
 
@@ -55,7 +60,7 @@ export const useComposerCommands = ({ focusInput }: { focusInput: () => void }) 
       title: language.t("command.model.variant.cycle"),
       description: language.t("command.model.variant.cycle.description"),
       keybind: "shift+mod+d",
-      onSelect: () => local.model.variant.cycle(),
+      onSelect: () => model.variant.cycle(),
     }),
     agentCommand({
       id: "agent.cycle",

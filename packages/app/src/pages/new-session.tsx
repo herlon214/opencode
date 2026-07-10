@@ -14,7 +14,6 @@ import {
   createPromptProjectController,
 } from "@/components/prompt-project-selector"
 import { useComments } from "@/context/comments"
-import { useCommand } from "@/context/command"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
@@ -27,10 +26,13 @@ import { useComposerCommands } from "@/pages/session/use-composer-commands"
 import { NEW_SESSION_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { PromptWorkspaceSelector } from "@/components/prompt-workspace-selector"
 import { useTitlebarRightMount } from "@/components/titlebar"
+import { useCommand } from "@/context/command"
 import { useProviders } from "@/hooks/use-providers"
 import { useSettingsDialog } from "@/components/settings-dialog"
 import { Persist, persisted } from "@/utils/persist"
 import createPresence from "solid-presence"
+import { useLocal } from "@/context/local"
+import { createPromptModelSelection } from "@/pages/session/composer/prompt-model-selection"
 
 const workspaceBarEnabled = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
 const providerTipDismissalDuration = 30 * 24 * 60 * 60 * 1000
@@ -53,15 +55,18 @@ export default function NewSessionPage() {
   const openProviderSettings = useSettingsDialog("providers")
   const route = useSessionKey()
   const [searchParams, setSearchParams] = useSearchParams<{ draftId?: string; prompt?: string }>()
+  const local = useLocal()
+  const model = createPromptModelSelection({ agent: local.agent.current })
 
   let inputRef: HTMLDivElement | undefined
 
-  useComposerCommands({ focusInput: () => inputRef?.focus() })
+  useComposerCommands({ model, focusInput: () => inputRef?.focus() })
 
   const inputController = createPromptInputController({
     sessionKey: route.sessionKey,
     sessionID: () => route.params.id,
     queryOptions: serverSync().queryOptions,
+    model,
   })
   const projectControls = createPromptProjectControls()
   const projectController = createPromptProjectController({
@@ -69,13 +74,20 @@ export default function NewSessionPage() {
     onDone: () => inputRef?.focus(),
   })
 
-  command.register("new-session.project", () => [
+  command.register("new-session", () => [
     {
       id: "project.picker",
       title: language.t("command.project.picker"),
       category: language.t("command.category.project"),
       keybind: "mod+e",
       onSelect: () => projectController.setOpen(true),
+    },
+    {
+      id: "input.focus",
+      title: language.t("command.input.focus"),
+      category: language.t("command.category.view"),
+      keybind: "ctrl+l",
+      onSelect: () => inputRef?.focus(),
     },
   ])
 

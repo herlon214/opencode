@@ -15,7 +15,7 @@ import {
   type JSX,
 } from "solid-js"
 import { createStore, type SetStoreFunction, type Store } from "solid-js/store"
-import type { useLocal } from "@/context/local"
+import type { ModelSelection } from "@/context/local"
 import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/file"
 import {
   ContentPart,
@@ -38,6 +38,8 @@ import { Icon } from "@opencode-ai/ui/icon"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
@@ -103,7 +105,7 @@ export type PromptInputControls = {
     select: (name: string | undefined) => void
   }
   model: {
-    selection: ReturnType<typeof useLocal>["model"]
+    selection: ModelSelection
     paid: boolean
     loading: boolean
   }
@@ -1373,6 +1375,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       onQueue: props.onQueue,
       onAbort: props.onAbort,
       onSubmit: props.onSubmit,
+      model: props.controls.model.selection,
     })
 
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -1778,22 +1781,19 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   >
                     <MenuV2 gutter={6} modal={false} placement="top-start">
                       <MenuV2.Trigger
-                        as={IconButton}
+                        as={IconButtonV2}
                         data-action="prompt-attach"
                         type="button"
-                        icon="plus"
-                        variant="ghost"
-                        class="size-7 rounded-md p-[6px] text-v2-icon-icon-muted"
+                        icon={<IconV2 name="plus" />}
+                        variant="ghost-muted"
+                        size="large"
                         style={buttons()}
                         disabled={store.mode !== "normal"}
                         tabIndex={store.mode === "normal" ? undefined : -1}
                         aria-label={language.t("prompt.menu.addImagesAndFiles")}
                       />
                       <MenuV2.Portal>
-                        <MenuV2.Content
-                          class="[&_[data-slot=menu-v2-item-shortcut]]:w-5 [&_[data-slot=menu-v2-item-shortcut]]:justify-center"
-                          style={{ "min-width": "180px" }}
-                        >
+                        <MenuV2.Content style={{ "min-width": "180px" }}>
                           <MenuV2.Item onSelect={pick} shortcut={command.keybind("file.attach")}>
                             {language.t("prompt.menu.imagesAndFiles")}
                           </MenuV2.Item>
@@ -2301,7 +2301,7 @@ type ComposerModelControlState = {
   paid: boolean
   title: string
   keybind: string[]
-  model: ReturnType<typeof useLocal>["model"]
+  model: ModelSelection
   providerID?: string
   modelName: string
   newLayoutDesigns: boolean
