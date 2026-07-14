@@ -150,137 +150,47 @@ describe("plugin.codex", () => {
     await enabled.dispose?.()
   })
 
-  test("rewrites GPT-5.6 OAuth requests for Responses Lite", async () => {
-    const requests: Array<{ headers: Headers; body: Record<string, unknown> }> = []
-    using server = Bun.serve({
-      port: 0,
-      async fetch(request) {
-        requests.push({ headers: new Headers(request.headers), body: await readRequestBody(request) })
-        return Response.json({})
+  test("filters unsupported modes and uses Codex context limits for OAuth GPT models", async () => {
+    const hooks = await CodexAuthPlugin({} as never)
+    const limit = { context: 1_050_000, input: 922_000, output: 128_000 }
+    const provider = {
+      models: {
+        ...Object.fromEntries(
+          ["gpt-5.4", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.7-pro"].map((id) => [
+            id,
+            { id, api: { id }, limit, cost: {}, options: {} },
+          ]),
+        ),
+        "gpt-5.4-pro": {
+          id: "gpt-5.4-pro",
+          api: { id: "gpt-5.4" },
+          limit,
+          cost: {},
+          options: { reasoningMode: "pro" },
+        },
+        "gpt-5.6-sol-high": {
+          id: "gpt-5.6-sol-high",
+          api: { id: "gpt-5.6-sol" },
+          limit,
+          cost: {},
+          options: { reasoningEffort: "high" },
+        },
       },
-    })
-    const providerFetch = await loadCodexFetch(new URL("/backend-api/codex/responses", server.url).toString())
-    const body = JSON.stringify({
-      model: "gpt-5.6-luna",
-      input: [
-        {
-          role: "user",
-          content: [{ type: "input_image", image_url: "data:image/png;base64,test", detail: "high" }],
-        },
-        {
-          type: "function_call_output",
-          call_id: "call_123",
-          output: [{ type: "input_image", image_url: "data:image/png;base64,result", detail: "low" }],
-        },
-      ],
-      instructions: "Be concise.",
-      tools: [
-        {
-          type: "function",
-          name: "noop",
-          description: "No operation",
-          parameters: { type: "object", properties: {}, additionalProperties: false },
-          strict: false,
-        },
-      ],
-      parallel_tool_calls: true,
-      prompt_cache_key: "ses_luna",
-      reasoning: { effort: "high", summary: "auto" },
-      stream: true,
-    })
-    const init = {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "session-id": "ses_luna",
-        "x-session-affinity": "ses_luna",
-      },
-      body,
     }
 
-    await providerFetch("https://api.openai.com/v1/responses", init)
-    await providerFetch("https://api.openai.com/v1/responses", {
-      ...init,
-      body: JSON.stringify({ model: "gpt-5.6-luna", input: [], stream: true }),
-    })
+    const models = await hooks.provider!.models!(provider as never, { auth: { type: "oauth" } } as never)
 
-    expect(requests).toHaveLength(2)
-    expect(requests[0]?.headers.get("version")).toBe("0.144.0")
-    expect(requests[0]?.headers.get("x-openai-internal-codex-responses-lite")).toBe("true")
-    const sessionID = requests[0]?.headers.get("session-id")
-    expect(sessionID).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
-    expect(requests[1]?.headers.get("session-id")).toBe(sessionID)
-    expect(requests[0]?.headers.get("x-session-affinity")).toBe(sessionID)
-    expect(requests[0]?.body.prompt_cache_key).toBe(sessionID)
-    expect(requests[0]?.body.tool_choice).toBe("auto")
-    expect(requests[0]?.body.parallel_tool_calls).toBe(false)
-    expect(requests[0]?.body.reasoning).toEqual({ effort: "high", summary: "auto", context: "all_turns" })
-    expect(requests[0]?.body.tools).toBeUndefined()
-    expect(requests[0]?.body.instructions).toBeUndefined()
-    expect(requests[0]?.body.input).toEqual([
-      {
-        type: "additional_tools",
-        role: "developer",
-        tools: [
-          {
-            type: "function",
-            name: "noop",
-            description: "No operation",
-            parameters: { type: "object", properties: {}, additionalProperties: false },
-            strict: false,
-          },
-        ],
-      },
-      {
-        type: "message",
-        role: "developer",
-        content: [{ type: "input_text", text: "Be concise." }],
-      },
-      {
-        role: "user",
-        content: [{ type: "input_image", image_url: "data:image/png;base64,test" }],
-      },
-      {
-        type: "function_call_output",
-        call_id: "call_123",
-        output: [{ type: "input_image", image_url: "data:image/png;base64,result" }],
-      },
-    ])
-    expect(requests[1]?.body.input).toEqual([{ type: "additional_tools", role: "developer", tools: [] }])
-  })
-
-  test("leaves non-Lite OAuth requests unchanged", async () => {
-    const requests: Array<{ headers: Headers; body: Record<string, unknown> }> = []
-    using server = Bun.serve({
-      port: 0,
-      async fetch(request) {
-        requests.push({ headers: new Headers(request.headers), body: await readRequestBody(request) })
-        return Response.json({})
-      },
-    })
-    const providerFetch = await loadCodexFetch(new URL("/backend-api/codex/responses", server.url).toString())
-    const body = {
-      model: "gpt-5.5",
-      input: [{ role: "user", content: [{ type: "input_text", text: "Hello" }] }],
-      instructions: "Be concise.",
-      tools: [],
-      parallel_tool_calls: true,
-      prompt_cache_key: "ses_legacy",
-      reasoning: { effort: "medium", summary: "auto" },
-      stream: true,
-    }
-
-    await providerFetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "content-type": "application/json", "session-id": "ses_legacy" },
-      body: JSON.stringify(body),
-    })
-
-    expect(requests).toHaveLength(1)
-    expect(requests[0]?.headers.get("session-id")).toBe("ses_legacy")
-    expect(requests[0]?.headers.get("version")).toBeNull()
-    expect(requests[0]?.headers.get("x-openai-internal-codex-responses-lite")).toBeNull()
-    expect(requests[0]?.body).toEqual(body)
+    expect(models["gpt-5.4"]?.limit).toEqual(limit)
+    expect(models["gpt-5.5"]?.limit).toEqual({ context: 400_000, input: 272_000, output: 128_000 })
+    expect(models["gpt-5.6-sol"]?.limit).toEqual({ context: 500_000, input: 372_000, output: 128_000 })
+    expect(models["gpt-5.6-terra"]?.limit).toEqual({ context: 500_000, input: 372_000, output: 128_000 })
+    expect(models["gpt-5.6-luna"]?.limit).toEqual({ context: 500_000, input: 372_000, output: 128_000 })
+    expect(models["gpt-5.4-pro"]).toBeUndefined()
+    expect(models["gpt-5.7-pro"]).toBeDefined()
+    expect(models["gpt-5.6-sol-high"]).toBeDefined()
+    expect(await hooks.provider!.models!(provider as never, { auth: { type: "api" } } as never)).toBe(
+      provider.models as never,
+    )
   })
 
   test("deduplicates concurrent Codex token refreshes", async () => {

@@ -757,9 +757,13 @@ export const dict = {
   "settings.general.row.focusMode.title": "Modo foco",
   "settings.general.row.focusMode.description":
     "Recolher o bloco de etapas em andamento por padrão em vez de expandi-lo",
-  "settings.general.row.newLayoutDesigns.title": "Novo layout e design",
-  "settings.general.row.newLayoutDesigns.description":
-    "Ativar o layout, a página inicial, a área de composição e a interface de sessão reformulados",
+  "settings.general.row.newInterface.title": "Novo layout",
+  "settings.general.row.newInterface.badge": "Novo",
+  "settings.general.row.newInterface.description":
+    "Use as novas abas e o layout da página inicial. Alterne entre os layouts por tempo limitado.",
+  "settings.general.row.newInterfaceNotice.title": "Agora você está usando o novo layout",
+  "settings.general.row.newInterfaceNotice.description": "O layout anterior não está mais disponível",
+  "settings.general.row.newInterfaceNotice.dismiss": "Descartar",
   "settings.general.row.pinchZoom.title": "Zoom com gesto de pinça",
   "settings.general.row.pinchZoom.description":
     "Permitir gestos de pinça no trackpad e de Ctrl+rolagem para aplicar zoom",

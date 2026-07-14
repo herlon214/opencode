@@ -81,6 +81,7 @@ import { sessionTitle } from "@/utils/session-title"
 import { displayName } from "@/pages/layout/helpers"
 import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
 import { scheduleConnectedMeasure } from "./measure"
+import { observeElementOffsetReconnectAware } from "./observe-element-offset"
 import { createTimelineProjection } from "./projection"
 import { MessageComment, SummaryDiff, TimelineRow, TimelineRowMap } from "./rows"
 import type { PartGroup } from "@opencode-ai/session-ui/message-part"
@@ -359,6 +360,7 @@ export function MessageTimeline(props: {
     status: sessionStatus,
     showReasoningSummaries: settings.general.showReasoningSummaries,
     collapseInProgress: settings.general.collapseInProgress,
+    inlineComments: settings.general.newLayoutDesigns,
   })
   const activeMessageID = projection.activeMessageID
   const assistantMessagesByParent = projection.assistantMessagesByParent
@@ -439,6 +441,7 @@ export function MessageTimeline(props: {
       return timelineRows().length
     },
     getScrollElement: () => listRoot() ?? null,
+    observeElementOffset: observeElementOffsetReconnectAware,
     initialOffset: () => (props.shouldAnchorBottom() ? Number.MAX_SAFE_INTEGER : 0),
     initialMeasurementsCache: initialMeasurements,
     estimateSize: () => timelineFallbackItemSize,
@@ -872,9 +875,7 @@ export function MessageTimeline(props: {
     const session = sync().session.get(sessionID)
     if (!session) return false
 
-    const sessions = (sync().data.session ?? []).filter(
-      (s) => !s.parentID && !s.time?.archived && !s.metadata?.side,
-    )
+    const sessions = (sync().data.session ?? []).filter((s) => !s.parentID && !s.time?.archived && !s.metadata?.side)
     const index = sessions.findIndex((s) => s.id === sessionID)
     const nextSession = index === -1 ? undefined : (sessions[index + 1] ?? sessions[index - 1])
 
@@ -1050,11 +1051,7 @@ export function MessageTimeline(props: {
     }
   }
 
-  function renderPartGroup(
-    group: Accessor<PartGroup>,
-    userMessageID: Accessor<string>,
-    onSizeChange?: () => void,
-  ) {
+  function renderPartGroup(group: Accessor<PartGroup>, userMessageID: Accessor<string>, onSizeChange?: () => void) {
     if (group().type === "context") {
       const parts = createMemo(() => {
         const g = group()
@@ -1122,7 +1119,11 @@ export function MessageTimeline(props: {
   }
 
   const renderAssistantPartGroup = (row: Accessor<TimelineRowMap["AssistantPart"]>, onSizeChange?: () => void) =>
-    renderPartGroup(() => row().group, () => row().userMessageID, onSizeChange)
+    renderPartGroup(
+      () => row().group,
+      () => row().userMessageID,
+      onSizeChange,
+    )
 
   function TimelineRowFrame(input: { row: Accessor<FramedTimelineRow>; children: JSX.Element }) {
     const anchor = () => {
@@ -1176,7 +1177,7 @@ export function MessageTimeline(props: {
     const groupCount = createMemo(() => props.row().groups.length)
     const fileChanges = createMemo(() => {
       const summary = messageByID().get(props.row().userMessageID)?.summary
-      return summary && typeof summary !== "boolean" ? summary.diffs ?? [] : []
+      return summary && typeof summary !== "boolean" ? (summary.diffs ?? []) : []
     })
     const durationLabel = createMemo(() => {
       const ms = turnDurationMs(props.row().userMessageID)
@@ -1285,13 +1286,14 @@ export function MessageTimeline(props: {
         <Show when={active() && workingElapsed()}>
           {(elapsed) => (
             <>
-              <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
+              <span
+                data-slot="in-progress-group-separator"
+                class="shrink-0 font-normal text-text-weak"
+                aria-hidden="true"
+              >
                 ·
               </span>
-              <span
-                data-slot="in-progress-group-elapsed"
-                class="shrink-0 font-normal text-text-weak tabular-nums"
-              >
+              <span data-slot="in-progress-group-elapsed" class="shrink-0 font-normal text-text-weak tabular-nums">
                 {elapsed()}
               </span>
             </>
@@ -1301,11 +1303,9 @@ export function MessageTimeline(props: {
           <span data-slot="in-progress-group-separator" class="shrink-0 font-normal text-text-weak" aria-hidden="true">
             ·
           </span>
-          <span
-            data-slot="in-progress-group-files"
-            class="shrink-0 font-normal text-text-weak tabular-nums"
-          >
-            {fileChanges().length} {language.t(fileChanges().length === 1 ? "ui.common.file.one" : "ui.common.file.other")}
+          <span data-slot="in-progress-group-files" class="shrink-0 font-normal text-text-weak tabular-nums">
+            {fileChanges().length}{" "}
+            {language.t(fileChanges().length === 1 ? "ui.common.file.one" : "ui.common.file.other")}
           </span>
           <DiffChanges class="shrink-0" changes={fileChanges()} />
         </Show>
@@ -1347,13 +1347,15 @@ export function MessageTimeline(props: {
               .groups.map((item) => item.group.key)
               .join(",")}
           >
-            <div data-component="in-progress-group-trigger">
-              {title(false)}
-            </div>
+            <div data-component="in-progress-group-trigger">{title(false)}</div>
             <Show when={lastTextGroup()}>
               {(group) => (
                 <div data-component="in-progress-group-list">
-                  {renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+                  {renderPartGroup(
+                    () => group().group,
+                    () => props.row().userMessageID,
+                    props.onSizeChange,
+                  )}
                 </div>
               )}
             </Show>
@@ -1380,7 +1382,11 @@ export function MessageTimeline(props: {
           <Show when={!open() && lastTextGroup()}>
             {(group) => (
               <div data-component="in-progress-group-list">
-                {renderPartGroup(() => group().group, () => props.row().userMessageID, props.onSizeChange)}
+                {renderPartGroup(
+                  () => group().group,
+                  () => props.row().userMessageID,
+                  props.onSizeChange,
+                )}
               </div>
             )}
           </Show>
@@ -1454,6 +1460,10 @@ export function MessageTimeline(props: {
           const m = messageByID().get(userMessageRow().userMessageID)
           if (m?.role === "user") return m
         })
+        const messageComments = createMemo(() => {
+          if (!settings.general.newLayoutDesigns()) return []
+          return getMsgParts(userMessageRow().userMessageID).flatMap((part) => MessageComment.fromPart(part) ?? [])
+        })
         return (
           <TimelineRowFrame row={userMessageRow}>
             <Show when={message()}>
@@ -1465,6 +1475,7 @@ export function MessageTimeline(props: {
                       parts={getMsgParts(userMessageRow().userMessageID)}
                       actions={props.actions}
                       useV2Actions={settings.general.newLayoutDesigns()}
+                      comments={messageComments()}
                     />
                   </div>
                 </div>

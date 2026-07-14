@@ -38,8 +38,16 @@ export interface ProjectAvatarProps extends ComponentProps<"div"> {
 }
 
 export function ProjectAvatar(props: ProjectAvatarProps) {
-  const [split, rest] = splitProps(props, ["fallback", "src", "variant", "unread", "warning", "class", "classList", "style"])
-  const src = split.src
+  const [split, rest] = splitProps(props, [
+    "fallback",
+    "src",
+    "variant",
+    "unread",
+    "warning",
+    "class",
+    "classList",
+    "style",
+  ])
   return (
     <div
       {...rest}
@@ -55,9 +63,9 @@ export function ProjectAvatar(props: ProjectAvatarProps) {
       <div
         data-slot="project-avatar-surface"
         data-variant={split.variant ?? "gray"}
-        data-has-image={src ? "" : undefined}
+        data-has-image={split.src ? "" : undefined}
       >
-        <Show when={src} fallback={first(split.fallback)}>
+        <Show when={split.src} fallback={first(split.fallback)}>
           {(value) => <img src={value()} draggable={false} data-slot="project-avatar-image" />}
         </Show>
       </div>

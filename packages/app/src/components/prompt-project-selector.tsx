@@ -1,4 +1,13 @@
-import { createEffect, createSignal, For, onCleanup, Show, type Accessor } from "solid-js"
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  Show,
+  splitProps,
+  type Accessor,
+  type ComponentProps,
+} from "solid-js"
 import { createStore } from "solid-js/store"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -184,9 +193,27 @@ export function PromptProjectSelector(props: {
   controller: PromptProjectController
   placement?: "bottom" | "bottom-start"
 }) {
+  const [triggerReady, setTriggerReady] = createSignal(false)
   let contentRef: HTMLDivElement | undefined
-  const [triggerRef, setTriggerRef] = createSignal<HTMLButtonElement>()
+  let triggerFrame: number | undefined
   let restoreTrigger = true
+
+  // Floating UI requires a connected anchor; route transitions can construct this trigger before adoption.
+  const setTriggerRef = (element: HTMLButtonElement) => {
+    const ready = () => {
+      if (!element.isConnected) {
+        triggerFrame = requestAnimationFrame(ready)
+        return
+      }
+      triggerFrame = undefined
+      setTriggerReady(true)
+    }
+    ready()
+  }
+
+  onCleanup(() => {
+    if (triggerFrame !== undefined) cancelAnimationFrame(triggerFrame)
+  })
 
   const activeItem = () =>
     props.controller.active()
@@ -258,44 +285,13 @@ export function PromptProjectSelector(props: {
 
   return (
     <DropdownMenu
-      open={props.controller.open() && triggerRef()?.isConnected === true}
+      open={triggerReady() && props.controller.open()}
       placement={props.placement ?? "bottom"}
       gutter={4}
       modal={false}
       onOpenChange={(open) => props.controller.setOpen(open)}
     >
-      <DropdownMenu.Trigger
-        ref={setTriggerRef}
-        data-action="prompt-project"
-        class="flex h-7 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 transition-colors focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
-        classList={{
-          "hover:bg-v2-overlay-simple-overlay-hover": !props.controller.open(),
-          "bg-v2-overlay-simple-overlay-pressed": props.controller.open(),
-          "text-v2-text-text-muted": props.controller.open(),
-        }}
-        onKeyDownCapture={(event: KeyboardEvent) => {
-          if (props.controller.open() || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return
-          event.preventDefault()
-          event.stopImmediatePropagation()
-        }}
-      >
-        <Show
-          when={props.controller.selected()}
-          fallback={<Icon name="folder-add-left" size="small" class="shrink-0 text-v2-icon-icon-muted" />}
-        >
-          {(project) => (
-            <ProjectAvatar
-              fallback={displayName(project())}
-              src={getProjectAvatarSource(project().id, project().icon)}
-              variant={getProjectAvatarVariant(project().icon?.color)}
-            />
-          )}
-        </Show>
-        <span class="min-w-0 truncate leading-5">
-          {props.controller.selected() ? displayName(props.controller.selected()!) : props.controller.labels.new()}
-        </span>
-        <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
-      </DropdownMenu.Trigger>
+      <DropdownMenu.Trigger as={ProjectTrigger} ref={setTriggerRef} controller={props.controller} />
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           ref={contentRef}
@@ -456,6 +452,51 @@ export function PromptProjectAddButton(props: { controller: PromptProjectControl
     >
       <Icon name="folder-add-left" size="small" class="shrink-0 text-v2-icon-icon-muted" />
       <span class="min-w-0 truncate leading-5">{props.controller.labels.new()}</span>
+      <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+    </button>
+  )
+}
+
+function ProjectTrigger(props: ComponentProps<"button"> & { controller: PromptProjectController }) {
+  const [local, rest] = splitProps(props, ["controller", "class", "classList", "onClick", "onKeyDown"])
+  const project = () => local.controller.selected()
+  return (
+    <button
+      {...rest}
+      data-action="prompt-project"
+      type="button"
+      class="flex h-7 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 transition-colors focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
+      classList={{
+        ...local.classList,
+        "hover:bg-v2-overlay-simple-overlay-hover": !local.controller.open(),
+        "bg-v2-overlay-simple-overlay-pressed": local.controller.open(),
+        "text-v2-text-text-muted": local.controller.open(),
+      }}
+      onClick={local.onClick ?? (() => local.controller.setOpen(true))}
+      onKeyDown={(event) => {
+        if (!local.controller.open() && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+          event.preventDefault()
+          event.stopPropagation()
+          return
+        }
+        if (typeof local.onKeyDown === "function") local.onKeyDown(event)
+      }}
+    >
+      <Show
+        when={project()}
+        fallback={<Icon name="folder-add-left" size="small" class="shrink-0 text-v2-icon-icon-muted" />}
+      >
+        {(item) => (
+          <ProjectAvatar
+            fallback={displayName(item())}
+            src={getProjectAvatarSource(item().id, item().icon)}
+            variant={getProjectAvatarVariant(item().icon?.color)}
+          />
+        )}
+      </Show>
+      <span class="min-w-0 truncate leading-5">
+        {project() ? displayName(project()!) : local.controller.labels.new()}
+      </span>
       <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
     </button>
   )

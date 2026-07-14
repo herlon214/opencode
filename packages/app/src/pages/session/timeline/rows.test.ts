@@ -48,6 +48,7 @@ const thinkingRows = (reasoningText: string) =>
     "busy",
     true,
     false,
+    false,
   )
 
 const thinking = (rows: TimelineRow.TimelineRow[]) => {

@@ -49,6 +49,8 @@ export namespace Timeline {
     status: SessionStatus["type"],
     isActive: boolean,
     collapseInProgress: boolean,
+    // v2 renders comments inside the user message attachments row instead of a strip row
+    inlineComments: boolean,
   ) {
     const rows: TimelineRow.TimelineRow[] = []
 
@@ -86,7 +88,7 @@ export namespace Timeline {
         : groupParts(assistantPartRefs).map((group) => ({ type: "part" as const, group }))
     if (previousUserMessage) rows.push(new TimelineRow.TurnGap({ userMessageID: userMessage.id }))
 
-    if (comments.length > 0)
+    if (comments.length > 0 && !inlineComments)
       rows.push(
         new TimelineRow.CommentStrip({
           userMessageID: userMessage.id,
@@ -96,7 +98,7 @@ export namespace Timeline {
     rows.push(
       new TimelineRow.UserMessage({
         userMessageID: userMessage.id,
-        anchor: comments.length === 0,
+        anchor: inlineComments || comments.length === 0,
       }),
     )
 
@@ -122,7 +124,9 @@ export namespace Timeline {
       const lastAssistantMessage = assistantMessages.at(-1)
       const lastAssistantMessageID = lastAssistantMessage?.id
       const finalTextIndex =
-        lastAssistantMessage?.finish === "stop" ? findFinalTextGroup(allPartItems, partByID, lastAssistantMessageID) : -1
+        lastAssistantMessage?.finish === "stop"
+          ? findFinalTextGroup(allPartItems, partByID, lastAssistantMessageID)
+          : -1
       const hasFinal = finalTextIndex !== -1
       const finalItem = hasFinal ? allPartItems[finalTextIndex]! : undefined
 
@@ -200,7 +204,7 @@ export namespace Timeline {
     if (showThinkingShimmer) {
       const reasoningTexts = assistantMessages
         .flatMap((message) => getMessageParts(message.id))
-        .map((part) => (part.type === "reasoning" ? part.text ?? "" : ""))
+        .map((part) => (part.type === "reasoning" ? (part.text ?? "") : ""))
 
       let heading: string | undefined
       for (const text of reasoningTexts) {

@@ -29,6 +29,7 @@ import { Link } from "../link"
 import { SettingsListV2 } from "./parts/list"
 import { SettingsRowV2 } from "./parts/row"
 import { SettingsFolderAccessV2 } from "./folder-access"
+import { LayoutRetirementNotice, LayoutTransitionToggle } from "./interface-transition"
 import "./settings-v2.css"
 
 let demoSoundState = {
@@ -227,6 +228,31 @@ export const SettingsGeneralV2: Component<{
     },
   })
 
+  const InterfaceSection = () => (
+    <LayoutTransitionToggle
+      title={language.t("settings.general.row.newInterface.title")}
+      badge={language.t("settings.general.row.newInterface.badge")}
+      description={language.t("settings.general.row.newInterface.description")}
+      checked={settings.general.newLayoutDesigns()}
+      onChange={(checked) => {
+        settings.general.setNewLayoutDesigns(checked)
+        if (checked) return
+        void import("@/components/dialog-settings").then((module) => {
+          void dialog.show(() => <module.DialogSettings />)
+        })
+      }}
+    />
+  )
+
+  const InterfaceNoticeSection = () => (
+    <LayoutRetirementNotice
+      title={language.t("settings.general.row.newInterfaceNotice.title")}
+      description={language.t("settings.general.row.newInterfaceNotice.description")}
+      dismiss={language.t("settings.general.row.newInterfaceNotice.dismiss")}
+      onDismiss={settings.general.dismissNewInterfaceNotice}
+    />
+  )
+
   const GeneralSection = () => (
     <div class="settings-v2-section">
       <SettingsListV2>
@@ -314,24 +340,6 @@ export const SettingsGeneralV2: Component<{
         </SettingsRowV2>
 
         <SettingsRowV2
-          title={language.t("settings.general.row.newLayoutDesigns.title")}
-          description={language.t("settings.general.row.newLayoutDesigns.description")}
-        >
-          <div data-action="settings-new-layout-designs">
-            <Switch
-              checked={settings.general.newLayoutDesigns()}
-              onChange={(checked) => {
-                settings.general.setNewLayoutDesigns(checked)
-                if (checked) return
-                void import("@/components/dialog-settings").then((module) => {
-                  dialog.show(() => <module.DialogSettings />)
-                })
-              }}
-            />
-          </div>
-        </SettingsRowV2>
-
-        <SettingsRowV2
           title={language.t("settings.general.row.collapseInProgress.title")}
           description={language.t("settings.general.row.collapseInProgress.description")}
         >
@@ -354,7 +362,6 @@ export const SettingsGeneralV2: Component<{
             />
           </div>
         </SettingsRowV2>
-
         <Show when={mobile() && import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"}>
           <SettingsRowV2
             title={language.t("settings.general.row.mobileTitlebarBottom.title")}
@@ -708,6 +715,14 @@ export const SettingsGeneralV2: Component<{
       </div>
 
       <div class="settings-v2-tab-body">
+        <Show when={settings.general.layoutTransitionAvailable()}>
+          <InterfaceSection />
+        </Show>
+
+        <Show when={settings.general.newInterfaceNoticeVisible()}>
+          <InterfaceNoticeSection />
+        </Show>
+
         <GeneralSection />
 
         <SettingsFolderAccessV2 />
