@@ -125,6 +125,13 @@ export default function NewSessionPage() {
       keybind: "ctrl+l",
       onSelect: () => promptInputV2Controller.restoreFocus(),
     },
+    {
+      id: "project.picker",
+      title: language.t("command.project.picker"),
+      category: language.t("command.category.project"),
+      keybind: "mod+e",
+      onSelect: () => projectController.setOpen(true),
+    },
   ])
 
   createEffect(() => {
