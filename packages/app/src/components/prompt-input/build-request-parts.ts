@@ -113,14 +113,17 @@ const toOptimisticPart = (part: PromptRequestPart, sessionID: string, messageID:
 
 export function buildRequestParts(input: BuildRequestPartsInput) {
   const metadata = quoteReplyMetadata(input.prompt)
-  const requestParts: PromptRequestPart[] = [
-    {
-      id: Identifier.ascending("part"),
-      type: "text",
-      text: input.text,
-      ...(metadata ? { metadata } : {}),
-    },
-  ]
+  const requestParts: PromptRequestPart[] =
+    input.text.trim() || metadata
+      ? [
+          {
+            id: Identifier.ascending("part"),
+            type: "text",
+            text: input.text,
+            ...(metadata ? { metadata } : {}),
+          },
+        ]
+      : []
 
   const files = input.prompt.filter(isFileAttachment).map((attachment) => {
     const path = absolute(input.sessionDirectory, attachment.path)

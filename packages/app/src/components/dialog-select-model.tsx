@@ -1,5 +1,5 @@
 import { Popover as Kobalte } from "@kobalte/core/popover"
-import { Component, ComponentProps, createEffect, createMemo, For, JSX, onCleanup, Show } from "solid-js"
+import { Component, ComponentProps, createEffect, createMemo, For, JSX, onCleanup, Show, type ValidComponent } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -235,6 +235,7 @@ export function ModelSelectorPopoverV2(props: {
   provider?: string
   model?: ModelState
   children?: JSX.Element
+  triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -370,7 +371,7 @@ export function ModelSelectorPopoverV2(props: {
 
   return (
     <MenuV2 open={props.open ?? store.open} modal={false} placement="top-start" gutter={6} onOpenChange={setOpen}>
-      <MenuV2.Trigger {...props.triggerProps}>{props.children}</MenuV2.Trigger>
+      <MenuV2.Trigger as={props.triggerAs ?? "div"} {...props.triggerProps}>{props.children}</MenuV2.Trigger>
       <MenuV2.Portal>
         <MenuV2.Content
           ref={(el: HTMLDivElement) => (contentRef = el)}

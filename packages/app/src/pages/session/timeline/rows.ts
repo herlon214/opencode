@@ -3,6 +3,7 @@ import { AssistantMessage, Part, SessionStatus, SnapshotFileDiff, UserMessage } 
 import { groupParts, hasTextContent, renderable, type PartGroup } from "@opencode-ai/session-ui/message-part"
 import { reasoningHeading } from "@opencode-ai/session-ui/message-part-reasoning"
 import { TimelineRow, type SummaryDiff } from "./timeline-row"
+import { uniqueSummaryDiffs } from "./summary-diffs"
 
 export { TimelineRow, type SummaryDiff } from "./timeline-row"
 
@@ -225,14 +226,7 @@ export namespace Timeline {
 
     if (isActive && status === "retry") rows.push(new TimelineRow.Retry({ userMessageID: userMessage.id }))
 
-    const diffs = (userMessage.summary?.diffs ?? [])
-      .reduceRight<SummaryDiff[]>((result, diff) => {
-        if (!isSummaryDiff(diff)) return result
-        if (result.some((item) => item.file === diff.file)) return result
-        result.push(diff)
-        return result
-      }, [])
-      .reverse()
+    const diffs = uniqueSummaryDiffs(userMessage.summary?.diffs)
     if (diffs.length > 0 && (status === "idle" || !isActive)) {
       rows.push(
         new TimelineRow.DiffSummary({
