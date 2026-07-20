@@ -2492,6 +2492,7 @@ export default function Page() {
                       },
                       shouldQueue: queueEnabled,
                       onQueue: queueFollowup,
+                      onQueueCommand: queueCommand,
                       onAbort: () => {
                         const id = params.id
                         if (!id) return

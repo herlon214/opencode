@@ -424,7 +424,13 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     onSuggestionSelect(item) {
       if (item.kind !== "command") return
       const selected = slashCommands().find((entry) => entry.id === item.id)
-      if (!selected || selected.type === "custom") return
+      if (!selected) return
+      if (props.shouldQueue?.()) {
+        const commandId = selected.type === "custom" ? undefined : selected.id
+        const title = selected.type === "custom" ? `/${selected.trigger}` : selected.title
+        return () => props.onQueueCommand?.(commandId, title)
+      }
+      if (selected.type === "custom") return
       return () => command.trigger(selected.id, "slash")
     },
     attachments: {

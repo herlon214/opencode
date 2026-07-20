@@ -188,6 +188,11 @@ export const SettingsGeneralV2: Component<{
     { value: "dark", label: language.t("theme.scheme.dark") },
   ])
 
+  const followupOptions = createMemo((): { value: "queue" | "steer"; label: string }[] => [
+    { value: "steer", label: language.t("settings.general.row.followup.option.steer") },
+    { value: "queue", label: language.t("settings.general.row.followup.option.queue") },
+  ])
+
   const languageOptions = createMemo(() =>
     language.locales.map((locale) => ({
       value: locale,
@@ -313,6 +318,23 @@ export const SettingsGeneralV2: Component<{
               onChange={(checked) => settings.general.setShowReasoningSummaries(checked)}
             />
           </div>
+        </SettingsRowV2>
+
+        <SettingsRowV2
+          title={language.t("settings.general.row.followup.title")}
+          description={language.t("settings.general.row.followup.description")}
+        >
+          <SelectV2
+            appearance="inline"
+            data-action="settings-followup"
+            options={followupOptions()}
+            current={followupOptions().find((o) => o.value === settings.general.followup())}
+            placement="bottom-end"
+            gutter={6}
+            value={(o) => o.value}
+            label={(o) => o.label}
+            onSelect={(option) => option && settings.general.setFollowup(option.value)}
+          />
         </SettingsRowV2>
 
         <SettingsRowV2
