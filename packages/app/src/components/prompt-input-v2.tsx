@@ -7,7 +7,7 @@ import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import type { Prompt, ReferenceInfo } from "@opencode-ai/sdk/v2/client"
-import { createEffect, createMemo, createSignal, on, Show } from "solid-js"
+import { createEffect, createMemo, on, Show } from "solid-js"
 import { ModelSelectorPopoverV2 } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaidV2 } from "@/components/dialog-select-model-unpaid-v2"
 import type { PromptInputProps } from "@/components/prompt-input/contracts"
@@ -57,13 +57,14 @@ export function PromptInputV2Composer(props: PromptInputV2ComposerProps) {
   useCommands(props)
   useEditHandler(props)
 
-  const [modelOpen, setModelOpen] = createSignal(false)
-  const openModelSelector = () => {
+  const openModelSelector = (event: Event) => {
     if (!props.controller.model.paid) {
       dialog.show(() => <DialogSelectModelUnpaidV2 model={props.controller.model.selection} />)
       return
     }
-    setModelOpen(true)
+    const trigger = (event.currentTarget as HTMLElement).querySelector<HTMLElement>('[data-action="prompt-model"]')
+    trigger?.focus()
+    trigger?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
   }
   const bindRootRef = (el: HTMLDivElement) => {
     makeEventListener(el, OPEN_MODEL_SELECTOR_EVENT, openModelSelector)
@@ -86,8 +87,6 @@ export function PromptInputV2Composer(props: PromptInputV2ComposerProps) {
             model={props.controller.model.selection}
             providerID={props.controller.model.selection.current()?.provider?.id}
             modelName={props.controller.model.selection.current()?.name ?? language.t("dialog.model.select.title")}
-            open={modelOpen()}
-            onOpenChange={setModelOpen}
             onClose={props.controller.restoreFocus}
             onUnpaidClick={() =>
               dialog.show(() => <DialogSelectModelUnpaidV2 model={props.controller.model.selection} />)
@@ -505,8 +504,6 @@ function PromptInputV2ModelControl(props: {
   model: PromptInputV2ComposerController["model"]["selection"]
   providerID?: string
   modelName: string
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
   onClose: () => void
   onUnpaidClick: () => void
 }) {
@@ -558,17 +555,15 @@ function PromptInputV2ModelControl(props: {
         >
           <ModelSelectorPopoverV2
             model={props.model}
-            triggerAs={ButtonV2}
             triggerProps={{
-              variant: "ghost-muted",
-              size: "normal",
+              "data-component": "button-v2",
+              "data-variant": "ghost-muted",
+              "data-size": "normal",
               style: { height: "28px" },
               class: "min-w-0 max-w-[220px] justify-start ![font-weight:440] group",
               classList: { "animate-in fade-in": shouldAnimate() },
               "data-action": "prompt-model",
             }}
-            open={props.open}
-            onOpenChange={props.onOpenChange}
             onClose={props.onClose}
           >
             {content()}
